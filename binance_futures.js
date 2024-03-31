@@ -9,13 +9,6 @@ const binance = new Binance().options({
   family: 4,
 });
 
-function truncateNumber(strNum, digits) {
-  let num = Number(strNum);
-  let factor = Math.pow(10, digits);
-  num = Math.floor(num * factor) / factor;
-  return num.toString();
-}
-
 // 매수 및 매도 조건 설정
 const rsiBuyThreshold = 40; // RSI 과매도 조건
 const rsiSellThreshold = 60; // RSI 과매수 조건
@@ -50,7 +43,7 @@ async function fetchCandlestickData(symbol, interval = '5m') {
   });
 }
 
-async function backtest(symbol, rsiBuy = 30, rsiSell = 60, interval = '5m') {
+async function backtest(symbol, rsiBuy = 30, rsiSell = 70, interval = '5m') {
   try {
     const ticks = await fetchCandlestickData(symbol, interval);
     const closes = ticks.map((tick) => parseFloat(tick[4])); // 종가 데이터
@@ -120,16 +113,16 @@ async function trade(symbol, interval = '5m') {
     const lastBB = bbValues[bbValues.length - 1];
 
     // 계정 잔액 조회
-    const accountInfo = await binance.account();
-    const usdtBalance = accountInfo.balances.find(
+    const accountInfo = await binance.futuresAccount();
+    const usdtBalance = accountInfo.assets.find(
       (asset) => asset.asset === 'USDT'
-    ).free;
-    const baseBalance = accountInfo.balances.find(
+    ).walletBalance;
+    const baseBalance = accountInfo.assets.find(
       (asset) => asset.asset === baseAsset
-    ).free;
+    ).walletBalance;
 
     // 현재 가격 조회
-    const currentPrices = await binance.prices();
+    const currentPrices = await binance.futuresPrices();
     const currentPrice = currentPrices[symbol];
     const quantity = (usdtBalance / currentPrice).toFixed(3);
 
@@ -144,26 +137,23 @@ async function trade(symbol, interval = '5m') {
     // 매수 조건 확인
     if (lastRSI < rsiBuyThreshold || lastClose < lastBB.lower) {
       console.log(
-        `매수 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
+        `매수 조건 충족. ${usdtBalance} 수량으로 ${symbol} 매수 실행.`
       );
-      const orderResult = await binance.marketBuy(symbol, quantity);
-      console.log(orderResult);
+      const orderResult = await binance.futuresMarketBuy(symbol, usdtBalance);
       sendMessage(
-        `매수 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
+        `매수 조건 충족. ${usdtBalance} 수량으로 ${symbol} 매수 실행.`
       );
+      console.log(orderResult);
     }
     // 매도 조건 확인
     else if (lastRSI > rsiSellThreshold || lastClose > lastBB.upper) {
       console.log(
-        `매도 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
+        `매도 조건 충족. ${baseBalance} 수량으로 ${symbol} 매도 실행.`
       );
-      const orderResult = await binance.marketSell(
-        symbol,
-        truncateNumber(baseBalance, 3)
-      );
+      const orderResult = await binance.futuresMarketSell(symbol, baseBalance);
       console.log(orderResult);
       sendMessage(
-        `매도 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
+        `매도 조건 충족. ${baseBalance} 수량으로 ${symbol} 매도 실행.`
       );
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
