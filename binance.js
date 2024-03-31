@@ -1,6 +1,7 @@
 require('dotenv').config();
 const Binance = require('node-binance-api');
 const { BollingerBands, RSI } = require('technicalindicators');
+const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
 
 const binance = new Binance().options({
   APIKEY: process.env.BINANCE_API_KEY,
@@ -13,8 +14,17 @@ const rsiBuyThreshold = 30; // RSI 과매도 조건
 const rsiSellThreshold = 70; // RSI 과매수 조건
 
 let intervalHandler = null;
+let telegramBot = null;
 
-async function fetchCandlestickData(symbol, interval = '15m') {
+function sendMessage(message) {
+  telegramBot.sendMessage(chatId, message);
+}
+
+function setTelegramBot(bot) {
+  telegramBot = bot;
+}
+
+async function fetchCandlestickData(symbol, interval = '5m') {
   const limit = 2500; // 데이터 개수 제한
 
   return new Promise((resolve, reject) => {
@@ -33,7 +43,7 @@ async function fetchCandlestickData(symbol, interval = '15m') {
   });
 }
 
-async function backtest(symbol, interval = '15m') {
+async function backtest(symbol, interval = '5m') {
   try {
     const ticks = await fetchCandlestickData(symbol, interval);
     const closes = ticks.map((tick) => parseFloat(tick[4])); // 종가 데이터
@@ -75,13 +85,14 @@ async function backtest(symbol, interval = '15m') {
     }
 
     const totalProfit = profits.reduce((acc, profit) => acc + profit, 0);
-    console.log(`Total Profit: ${totalProfit}`);
+    console.log(`Total Profit: ${totalProfit}, Trade Count: ${profits.length}`);
+    sendMessage(`Total Profit: ${totalProfit}, Trade Count: ${profits.length}`);
   } catch (error) {
     console.error('Backtesting failed:', error);
   }
 }
 
-async function trade(symbol, interval = '15m', sendMessage = null) {
+async function trade(symbol, interval = '5m') {
   try {
     // 마지막 500개의 캔들 데이터를 가져옵니다.
     const candles = await binance.futuresCandles(symbol, interval, {
@@ -116,13 +127,11 @@ async function trade(symbol, interval = '15m', sendMessage = null) {
     const quantity = (usdtBalance / currentPrice).toFixed(3);
 
     console.log(
-      'usdtBalance, baseBalance, lastRSI, lastClose, lastBB.lower, lastBB.upper ',
-      usdtBalance,
-      baseBalance,
-      lastRSI,
-      lastClose,
-      lastBB.lower,
-      lastBB.upper
+      `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
+    );
+
+    sendMessage(
+      `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
     );
 
     // 매수 조건 확인
@@ -154,7 +163,7 @@ async function trade(symbol, interval = '15m', sendMessage = null) {
   }
 }
 
-async function startTrade(symbol, interval = '15m', sendMessage = null) {
+async function startTrade(symbol, interval = '5m') {
   try {
     if (intervalHandler !== null) {
       clearInterval(intervalHandler);
@@ -162,7 +171,7 @@ async function startTrade(symbol, interval = '15m', sendMessage = null) {
       console.log('실행중인 트레이딩을 종료합니다.');
     }
 
-    trade(symbol, interval, sendMessage);
+    trade(symbol, interval);
 
     // 1분마다 trade 함수 실행
     intervalHandler = setInterval(() => trade(symbol, interval), 60 * 1000);
@@ -184,4 +193,4 @@ async function endTrade() {
   }
 }
 
-exports.binance = { backtest, startTrade, endTrade };
+exports.binance = { backtest, startTrade, endTrade, setTelegramBot };

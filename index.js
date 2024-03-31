@@ -4,7 +4,7 @@ const bot = require('./telegram').bot;
 const binance = require('./binance').binance;
 const app = express();
 const port = process.env.PORT || 3000;
-const chatId = '239211182';
+const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
@@ -28,11 +28,7 @@ app.get('/trade/start', (req, res) => {
   const symbol = req.query.symbol;
   const finalSymbol = symbol || 'BTCUSDT';
 
-  const sendMessage = (message) => {
-    bot.sendMessage(chatId, message);
-  };
-
-  binance.startTrade(finalSymbol, '5m', sendMessage);
+  binance.startTrade(finalSymbol, '5m');
   bot.sendMessage(chatId, 'start trade');
   res.send('trade start');
 });
@@ -40,9 +36,10 @@ app.get('/trade/start', (req, res) => {
 app.get('/trade/end', (req, res) => {
   binance.endTrade();
   bot.sendMessage(chatId, 'end trade');
-  res.send('trade start');
+  res.send('trade end');
 });
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+  binance.setTelegramBot(bot);
 });
