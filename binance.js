@@ -130,9 +130,9 @@ async function trade(symbol, interval = '5m') {
       `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
     );
 
-    sendMessage(
-      `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
-    );
+    // sendMessage(
+    //   `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
+    // );
 
     // 매수 조건 확인
     if (lastRSI < rsiBuyThreshold || lastClose < lastBB.lower) {
