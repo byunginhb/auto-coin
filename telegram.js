@@ -14,7 +14,7 @@ bot.on('message', (msg) => {
   } else if (args[0] === '/종료') {
     binance.endTrade();
     bot.sendMessage(chatId, `자동 거래 종료`);
-  } else if (args[0] === '/테스트' && args.length === 2) {
+  } else if (args[0] === '/테스트') {
     const symbol = args[1];
     const rb = args[2];
     const rs = args[3];
