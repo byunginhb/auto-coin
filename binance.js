@@ -10,8 +10,8 @@ const binance = new Binance().options({
 });
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 30; // RSI 과매도 조건
-const rsiSellThreshold = 70; // RSI 과매수 조건
+const rsiBuyThreshold = 40; // RSI 과매도 조건
+const rsiSellThreshold = 60; // RSI 과매수 조건
 
 let intervalHandler = null;
 let telegramBot = null;
@@ -43,7 +43,7 @@ async function fetchCandlestickData(symbol, interval = '5m') {
   });
 }
 
-async function backtest(symbol, interval = '5m') {
+async function backtest(symbol, rsiBuy = 30, rsiSell = 70, interval = '5m') {
   try {
     const ticks = await fetchCandlestickData(symbol, interval);
     const closes = ticks.map((tick) => parseFloat(tick[4])); // 종가 데이터
@@ -68,14 +68,14 @@ async function backtest(symbol, interval = '5m') {
 
       if (
         position === 'none' &&
-        (currentRSI < rsiBuyThreshold || currentClose < currentBB.lower)
+        (currentRSI < rsiBuy || currentClose < currentBB.lower)
       ) {
         position = 'buy';
         buyPrice = currentClose;
         console.log(`Buy at ${buyPrice}`);
       } else if (
         position === 'buy' &&
-        (currentRSI > rsiSellThreshold || currentClose > currentBB.upper)
+        (currentRSI > rsiSell || currentClose > currentBB.upper)
       ) {
         position = 'none';
         sellPrice = currentClose;

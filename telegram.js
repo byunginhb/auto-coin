@@ -16,11 +16,11 @@ bot.on('message', (msg) => {
     bot.sendMessage(chatId, `자동 거래 종료`);
   } else if (args[0] === '/테스트' && args.length === 2) {
     const symbol = args[1];
-    binance.backtest(symbol, '5m');
+    const rb = args[2];
+    const rs = args[3];
+    binance.backtest(symbol, rb, rs, '5m');
     bot.sendMessage(chatId, `백테스트 시작`);
-  }
-  
-  else {
+  } else {
     bot.sendMessage(chatId, `Received your message ${msg.text}`);
   }
 });

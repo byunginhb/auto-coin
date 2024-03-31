@@ -17,10 +17,12 @@ app.get('/check', (req, res) => {
 
 app.get('/backtest', (req, res) => {
   const symbol = req.query.symbol;
+  const rb = req.query.rb;
+  const rs = req.query.rs;
   const finalSymbol = symbol || 'BTCUSDT';
 
   bot.sendMessage(chatId, 'start backtest');
-  binance.backtest(finalSymbol, '5m');
+  binance.backtest(finalSymbol, rb, rs, '5m');
   res.send('backtest');
 });
 
