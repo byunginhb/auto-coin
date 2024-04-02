@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bot = require('./telegram').bot;
 const binance = require('./binance').binance;
+const binanceFutures = require('./binance_futures').binance;
 const app = express();
 const port = process.env.PORT || 3000;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
@@ -35,6 +36,21 @@ app.get('/trade/start', (req, res) => {
   res.send('trade start');
 });
 
+app.get('/futures/start', (req, res) => {
+  const symbol = req.query.symbol;
+  const finalSymbol = symbol || 'BTCUSDT';
+
+  binanceFutures.startTrade(finalSymbol, '5m');
+  bot.sendMessage(chatId, 'start trade');
+  res.send('trade start');
+});
+
+app.get('/futures/end', (req, res) => {
+  binanceFutures.endTrade();
+  bot.sendMessage(chatId, 'end trade');
+  res.send('trade end');
+});
+
 app.get('/trade/end', (req, res) => {
   binance.endTrade();
   bot.sendMessage(chatId, 'end trade');
@@ -44,4 +60,5 @@ app.get('/trade/end', (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
   binance.setTelegramBot(bot);
+  binanceFutures.setTelegramBot(bot);
 });
