@@ -10,8 +10,8 @@ const binance = new Binance().options({
 });
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 30; // RSI 과매도 조건
-const rsiSellThreshold = 70; // RSI 과매수 조건
+const rsiBuyThreshold = 40; // RSI 과매도 조건
+const rsiSellThreshold = 60; // RSI 과매수 조건
 
 let tradeIntervalHandler = null;
 let monitorIntervalHandler = null;
@@ -70,12 +70,15 @@ async function executeTrade(symbol, interval) {
     const quantity = (usdtBalance / currentPrice).toFixed(3); // Adjust based on the asset
 
     // 롱 포지션 개시 조건
-    if (!position.isOpen && (rsi < 30 || lastClose < bb.lower)) {
+    if (!position.isOpen && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
       console.log('롱 포지션 개시 조건 충족');
       await openPosition(symbol, quantity, 'LONG', lastClose);
     }
     // 숏 포지션 개시 조건
-    else if (!position.isOpen && (rsi > 70 || lastClose > bb.upper)) {
+    else if (
+      !position.isOpen &&
+      (rsi > rsiSellThreshold || lastClose > bb.upper)
+    ) {
       console.log('숏 포지션 개시 조건 충족');
       await openPosition(symbol, quantity, 'SHORT', lastClose);
     }
@@ -94,9 +97,9 @@ async function monitorPrice() {
   // 청산 조건 체크
   if (
     (position.type === 'LONG' &&
-      (priceChangePercent <= -3 || priceChangePercent >= 10)) ||
+      (priceChangePercent <= -3 || priceChangePercent >= 15)) ||
     (position.type === 'SHORT' &&
-      (priceChangePercent >= 3 || priceChangePercent <= -10))
+      (priceChangePercent >= 3 || priceChangePercent <= -15))
   ) {
     await closePosition();
   }
@@ -174,7 +177,7 @@ async function closePosition() {
   }
 }
 
-async function startTrade(symbol, interval = '5m') {
+async function startTrade(symbol, interval = '1m') {
   try {
     if (tradeIntervalHandler !== null) {
       clearInterval(tradeIntervalHandler);
@@ -221,6 +224,6 @@ async function endTrade() {
   }
 }
 
-startTrade('BTCUSDT', '1m');
+// startTrade('BTCUSDT', '1m');
 
 exports.binance = { startTrade, endTrade, setTelegramBot };
