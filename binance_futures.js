@@ -97,9 +97,9 @@ async function monitorPrice() {
   // 청산 조건 체크
   if (
     (position.type === 'LONG' &&
-      (priceChangePercent <= -3 || priceChangePercent >= 15)) ||
+      (priceChangePercent <= -1 || priceChangePercent >= 4)) ||
     (position.type === 'SHORT' &&
-      (priceChangePercent >= 3 || priceChangePercent <= -15))
+      (priceChangePercent >= 1 || priceChangePercent <= -4))
   ) {
     await closePosition();
   }
