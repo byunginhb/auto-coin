@@ -100,7 +100,7 @@ async function backtest(symbol, rsiBuy = 30, rsiSell = 60, interval = '5m') {
   }
 }
 
-async function trade(symbol, interval = '5m') {
+async function trade(symbol, interval = '1m') {
   monitorCount++;
   try {
     // 마지막 500개의 캔들 데이터를 가져옵니다.
@@ -182,7 +182,7 @@ async function trade(symbol, interval = '5m') {
   }
 }
 
-async function startTrade(symbol, interval = '5m') {
+async function startTrade(symbol, interval = '1m') {
   monitorCount = 0;
   try {
     if (intervalHandler !== null) {
@@ -212,5 +212,7 @@ async function endTrade() {
     console.error('Trade execution end failed:', error);
   }
 }
+
+backtest('ETHUSDT', 40, 60, '1m');
 
 exports.binance = { backtest, startTrade, endTrade, setTelegramBot };
