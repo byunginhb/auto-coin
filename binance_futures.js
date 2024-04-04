@@ -16,6 +16,7 @@ const rsiSellThreshold = 60; // RSI 과매수 조건
 let tradeIntervalHandler = null;
 let monitorIntervalHandler = null;
 let telegramBot = null;
+let monitorCount = 0;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -24,14 +25,6 @@ function sendMessage(message) {
 function setTelegramBot(bot) {
   telegramBot = bot;
 }
-
-let position = {
-  symbol: null,
-  entryPrice: null,
-  quantity: null,
-  type: null, // 'LONG' 또는 'SHORT'
-  isOpen: false,
-};
 
 async function fetchCandlestickData(symbol, interval, limit) {
   return binance.futuresCandles(symbol, interval, { limit: limit });
@@ -58,6 +51,7 @@ async function getCurrentPrice(symbol) {
 }
 
 async function executeTrade(symbol, interval) {
+  monitorCount++;
   try {
     const candles = await fetchCandlestickData(symbol, interval, 500);
     const { rsi, bb, lastClose } = await calculateIndicators(candles);
@@ -69,16 +63,20 @@ async function executeTrade(symbol, interval) {
     const currentPrice = await getCurrentPrice(symbol);
     const quantity = (usdtBalance / currentPrice).toFixed(3); // Adjust based on the asset
 
+    if (monitorCount >= 10) {
+      sendMessage(
+        `${symbol} - RSI: ${rsi}, Last Close: ${lastClose}, BB.lower: ${bb.lower}, BB.upper: ${bb.upper}`
+      );
+      monitorCount = 0;
+    }
+
     // 롱 포지션 개시 조건
-    if (!position.isOpen && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
+    if (quantity > 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
       console.log('롱 포지션 개시 조건 충족');
       await openPosition(symbol, quantity, 'LONG', lastClose);
     }
     // 숏 포지션 개시 조건
-    else if (
-      !position.isOpen &&
-      (rsi > rsiSellThreshold || lastClose > bb.upper)
-    ) {
+    else if (quantity > 0(rsi > rsiSellThreshold || lastClose > bb.upper)) {
       console.log('숏 포지션 개시 조건 충족');
       await openPosition(symbol, quantity, 'SHORT', lastClose);
     }
@@ -88,20 +86,58 @@ async function executeTrade(symbol, interval) {
 }
 
 async function monitorPrice() {
-  if (!position.isOpen) return;
+  // 사용자의 현재 포지션 정보 조회
+  const accountInfo = await binance.futuresAccount();
+  const positions = accountInfo.positions.filter(
+    (position) => parseFloat(position.positionAmt) !== 0
+  );
 
-  const currentPrice = await getCurrentPrice(position.symbol);
-  const priceChangePercent =
-    ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
+  if (positions.length === 0) {
+    console.log('No open positions to monitor.');
+    return;
+  }
 
-  // 청산 조건 체크
-  if (
-    (position.type === 'LONG' &&
-      (priceChangePercent <= -1 || priceChangePercent >= 4)) ||
-    (position.type === 'SHORT' &&
-      (priceChangePercent >= 1 || priceChangePercent <= -4))
-  ) {
-    await closePosition();
+  for (let pos of positions) {
+    const symbol = pos.symbol;
+    const entryPrice = parseFloat(pos.entryPrice);
+    const positionAmt = parseFloat(pos.positionAmt);
+    //const markPrice = parseFloat(pos.markPrice); // 현재 시장 가격
+    const markPrice = await getCurrentPrice(symbol);
+
+    let priceChangePercent = ((markPrice - entryPrice) / entryPrice) * 100;
+
+    // 숏 포지션의 경우 수익률 계산 방식 조정
+    if (positionAmt < 0) {
+      priceChangePercent = ((entryPrice - markPrice) / entryPrice) * 100;
+    }
+
+    console.log(
+      `[Monitoring] ${symbol} - Entry Price: ${entryPrice}, Mark Price: ${markPrice}, Change: ${priceChangePercent.toFixed(
+        2
+      )}%`
+    );
+
+    if (monitorCount >= 10) {
+      sendMessage(
+        `[Monitoring] ${symbol} - Entry Price: ${entryPrice}, Mark Price: ${markPrice}, Change: ${priceChangePercent.toFixed(
+          2
+        )}%`
+      );
+    }
+
+    // 수익률 조건 체크
+    if (priceChangePercent >= 3 || priceChangePercent <= -1) {
+      console.log(
+        `[Action] Closing ${symbol} position with ${priceChangePercent.toFixed(
+          2
+        )}% return.`
+      );
+      if (positionAmt > 0) {
+        await binance.futuresMarketSell(symbol, Math.abs(positionAmt)); // 롱 포지션 청산
+      } else {
+        await binance.futuresMarketBuy(symbol, Math.abs(positionAmt)); // 숏 포지션 청산
+      }
+    }
   }
 }
 
@@ -117,7 +153,6 @@ async function openPosition(symbol, quantity, type, entryPrice) {
       sendMessage(
         `Long position opened: ${quantity} ${entryPrice} 롱 포지션 실행.`
       );
-      position = { symbol, entryPrice, quantity, type, isOpen: true };
     } catch (error) {
       console.error(`Failed to open long position for ${symbol}:`, error);
     }
@@ -129,56 +164,15 @@ async function openPosition(symbol, quantity, type, entryPrice) {
       sendMessage(
         `Short position opened: ${quantity} ${entryPrice} 숏 포지션 실행.`
       );
-      position = { symbol, entryPrice, quantity, type, isOpen: true };
     } catch (error) {
       console.error(`Failed to open short position for ${symbol}:`, error);
     }
   }
 }
 
-async function closePosition() {
-  if (!position.isOpen) {
-    console.log('No position to close.');
-    return;
-  }
-  console.log(
-    `Closing ${position.type} position for ${position.symbol} with quantity ${position.quantity}`
-  );
-  if (position.type === 'LONG') {
-    // 롱 포지션 청산을 위한 매도 주문 실행
-    try {
-      const order = await binance.futuresMarketSell(
-        position.symbol,
-        position.quantity
-      );
-      console.log(`Long position closed: `, order);
-      position.isOpen = false;
-    } catch (error) {
-      console.error(
-        `Failed to close long position for ${position.symbol}:`,
-        error
-      );
-    }
-  } else if (position.type === 'SHORT') {
-    // 숏 포지션 청산을 위한 매수 주문 실행
-    try {
-      const order = await binance.futuresMarketBuy(
-        position.symbol,
-        position.quantity
-      );
-      console.log(`Short position closed: `, order);
-      position.isOpen = false;
-    } catch (error) {
-      console.error(
-        `Failed to close short position for ${position.symbol}:`,
-        error
-      );
-    }
-  }
-}
-
 async function startTrade(symbol, interval = '1m') {
   try {
+    monitorCount = 0;
     if (tradeIntervalHandler !== null) {
       clearInterval(tradeIntervalHandler);
       tradeIntervalHandler = null;
