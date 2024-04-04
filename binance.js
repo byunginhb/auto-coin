@@ -22,6 +22,7 @@ const rsiSellThreshold = 60; // RSI 과매수 조건
 
 let intervalHandler = null;
 let telegramBot = null;
+let monitorCount = 0;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -100,6 +101,7 @@ async function backtest(symbol, rsiBuy = 30, rsiSell = 60, interval = '5m') {
 }
 
 async function trade(symbol, interval = '5m') {
+  monitorCount++;
   try {
     // 마지막 500개의 캔들 데이터를 가져옵니다.
     const candles = await binance.futuresCandles(symbol, interval, {
@@ -141,6 +143,13 @@ async function trade(symbol, interval = '5m') {
     //   `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
     // );
 
+    if (monitorCount >= 10) {
+      sendMessage(
+        `${symbol} - currentPrices: ${currentPrices} RSI: ${lastRSI}, Last Close: ${lastClose}, BB.lower: ${lastBB.lower}, BB.upper: ${lastBB.upper}`
+      );
+      monitorCount = 0;
+    }
+
     // 매수 조건 확인
     if (lastRSI < rsiBuyThreshold || lastClose < lastBB.lower) {
       console.log(
@@ -174,6 +183,7 @@ async function trade(symbol, interval = '5m') {
 }
 
 async function startTrade(symbol, interval = '5m') {
+  monitorCount = 0;
   try {
     if (intervalHandler !== null) {
       clearInterval(intervalHandler);

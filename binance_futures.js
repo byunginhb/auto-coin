@@ -65,7 +65,7 @@ async function executeTrade(symbol, interval) {
 
     if (monitorCount >= 10) {
       sendMessage(
-        `${symbol} - RSI: ${rsi}, Last Close: ${lastClose}, BB.lower: ${bb.lower}, BB.upper: ${bb.upper}`
+        `${symbol} - currentPrice: ${currentPrice} RSI: ${rsi}, Last Close: ${lastClose}, BB.lower: ${bb.lower}, BB.upper: ${bb.upper}`
       );
       monitorCount = 0;
     }
