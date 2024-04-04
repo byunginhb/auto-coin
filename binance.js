@@ -145,7 +145,10 @@ async function trade(symbol, interval = '1m') {
 
     if (monitorCount >= 10) {
       sendMessage(
-        `${symbol} - currentPrices: ${currentPrices} RSI: ${lastRSI}, Last Close: ${lastClose}, BB.lower: ${lastBB.lower}, BB.upper: ${lastBB.upper}`
+        `${symbol} - RSI: ${lastRSI}, 
+        마지막 금액: ${lastClose}, 
+        볼린저 하단: ${lastBB.lower}, 
+        볼린저 상단: ${lastBB.upper}`
       );
       monitorCount = 0;
     }
@@ -213,6 +216,14 @@ async function endTrade() {
   }
 }
 
-backtest('ETHUSDT', 40, 60, '1m');
+const setMonitorCount = (count) => {
+  monitorCount = count;
+};
 
-exports.binance = { backtest, startTrade, endTrade, setTelegramBot };
+exports.binance = {
+  backtest,
+  startTrade,
+  endTrade,
+  setTelegramBot,
+  setMonitorCount,
+};

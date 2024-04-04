@@ -28,6 +28,9 @@ bot.on('message', (msg) => {
   } else if (args[0] === '/선물종료') {
     binanceFutures.endTrade();
     bot.sendMessage(chatId, `자동 거래 종료`);
+  } else if (args[0] === '/체크') {
+    binance.setMonitorCount(11);
+    binanceFutures.setMonitorCount(11);
   } else {
     bot.sendMessage(chatId, `Received your message ${msg.text}`);
   }

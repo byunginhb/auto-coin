@@ -65,7 +65,10 @@ async function executeTrade(symbol, interval) {
 
     if (monitorCount >= 10) {
       sendMessage(
-        `${symbol} - currentPrice: ${currentPrice} RSI: ${rsi}, Last Close: ${lastClose}, BB.lower: ${bb.lower}, BB.upper: ${bb.upper}`
+        `${symbol} - RSI: ${rsi}, 
+        마지막 금액: ${lastClose}, 
+        볼린저 하단: ${bb.lower}, 
+        볼린저 상단: ${bb.upper}`
       );
       monitorCount = 0;
     }
@@ -119,7 +122,7 @@ async function monitorPrice() {
 
     if (monitorCount >= 10) {
       sendMessage(
-        `[Monitoring] ${symbol} - Entry Price: ${entryPrice}, Mark Price: ${markPrice}, Change: ${priceChangePercent.toFixed(
+        `[Monitoring] ${symbol} - 진입 금액: ${entryPrice}, 현재 금액: ${markPrice}, 상태: ${priceChangePercent.toFixed(
           2
         )}%`
       );
@@ -127,14 +130,14 @@ async function monitorPrice() {
 
     // 수익률 조건 체크
     if (priceChangePercent >= 3 || priceChangePercent <= -1) {
-      console.log(
-        `[Action] Closing ${symbol} position with ${priceChangePercent.toFixed(
-          2
-        )}% return.`
+      sendMessage(
+        `청산 ${symbol} position with ${priceChangePercent.toFixed(2)}% return.`
       );
       if (positionAmt > 0) {
+        sendMessage('롱 포지션 청산');
         await binance.futuresMarketSell(symbol, Math.abs(positionAmt)); // 롱 포지션 청산
       } else {
+        sendMessage('숏 포지션 청산');
         await binance.futuresMarketBuy(symbol, Math.abs(positionAmt)); // 숏 포지션 청산
       }
     }
@@ -150,9 +153,7 @@ async function openPosition(symbol, quantity, type, entryPrice) {
     try {
       const order = await binance.futuresMarketBuy(symbol, quantity);
       console.log(`Long position opened: `, order);
-      sendMessage(
-        `Long position opened: ${quantity} ${entryPrice} 롱 포지션 실행.`
-      );
+      sendMessage(`${quantity} ${entryPrice} 롱 포지션 실행.`);
     } catch (error) {
       console.error(`Failed to open long position for ${symbol}:`, error);
     }
@@ -161,9 +162,7 @@ async function openPosition(symbol, quantity, type, entryPrice) {
     try {
       const order = await binance.futuresMarketSell(symbol, quantity);
       console.log(`Short position opened: `, order);
-      sendMessage(
-        `Short position opened: ${quantity} ${entryPrice} 숏 포지션 실행.`
-      );
+      sendMessage(`${quantity} ${entryPrice} 숏 포지션 실행.`);
     } catch (error) {
       console.error(`Failed to open short position for ${symbol}:`, error);
     }
@@ -218,6 +217,10 @@ async function endTrade() {
   }
 }
 
+const setMonitorCount = (count) => {
+  monitorCount = count;
+};
+
 // startTrade('BTCUSDT', '1m');
 
-exports.binance = { startTrade, endTrade, setTelegramBot };
+exports.binance = { startTrade, endTrade, setTelegramBot, setMonitorCount };
