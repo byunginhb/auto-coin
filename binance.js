@@ -145,7 +145,7 @@ async function trade(symbol, interval = '1m') {
 
     if (monitorCount >= 100) {
       sendMessage(
-        `${symbol} - RSI: ${lastRSI}, 
+        `${symbol} - 거래 RSI: ${lastRSI}, 
         마지막 금액: ${lastClose.toFixed(3)}, 
         볼린저 하단: ${lastBB.lower.toFixed(3)}, 
         볼린저 상단: ${lastBB.upper.toFixed(3)}`

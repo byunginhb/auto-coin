@@ -21,6 +21,8 @@ const rsiBuyThreshold = 40; // RSI 과매도 조건
 const rsiSellThreshold = 60; // RSI 과매수 조건
 
 let intervalHandler = null;
+let monitorIntervalHandler = null;
+
 let telegramBot = null;
 let monitorCount = 0;
 
@@ -69,17 +71,27 @@ async function trade(symbol, interval = '1m') {
     const currentPrice = await getCurrentPrice(symbol);
     const quantity = (usdtBalance / currentPrice).toFixed(3); // Adjust based on the asset
 
+    const positions = accountInfo.positions.filter(
+      (position) => parseFloat(position.positionAmt) !== 0
+    );
+
+    let positionAmt = 0;
+    if (positions.length > 0) {
+      const pos = positions[0];
+      positionAmt = parseFloat(pos.positionAmt);
+    }
+
     if (monitorCount >= 100) {
       sendMessage(
-        `${symbol} - RSI: ${rsi},
+        `${symbol} - 선물 RSI: ${rsi},
         마지막 금액: ${lastClose},
-        볼린저 하단: ${bb.lower},
-        볼린저 상단: ${bb.upper}`
+        볼린저 하단: ${bb.lower.toFixed(3)},
+        볼린저 상단: ${bb.upper.toFixed(3)}`
       );
     }
 
     // 매수 조건 확인
-    if (rsi < rsiBuyThreshold || lastClose < bb.lower) {
+    if (positionAmt < 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
       await closePosition();
       await openPosition(symbol, quantity, 'LONG', lastClose);
       sendMessage(
@@ -87,7 +99,10 @@ async function trade(symbol, interval = '1m') {
       );
     }
     // 매도 조건 확인
-    else if (rsi > rsiSellThreshold || lastClose > bb.upper) {
+    else if (
+      positionAmt > 0 &&
+      (rsi > rsiSellThreshold || lastClose > bb.upper)
+    ) {
       await closePosition();
       await openPosition(symbol, quantity, 'SHORT', lastClose);
 
@@ -222,10 +237,18 @@ async function startTrade(symbol, interval = '1m') {
       console.log('실행중인 트레이딩을 종료합니다.');
     }
 
+    if (monitorIntervalHandler !== null) {
+      clearInterval(monitorIntervalHandler);
+      monitorIntervalHandler = null;
+      console.log('실행중인 모니터링을 종료합니다.');
+    }
+
     trade(symbol, interval);
 
     // 1분마다 trade 함수 실행
     intervalHandler = setInterval(() => trade(symbol, interval), 60 * 1000);
+    monitorIntervalHandler = setInterval(monitorPrice, 20 * 1000);
+
     console.log('트레이딩을 실행합니다.');
   } catch (error) {
     console.error('Trade execution start failed:', error);
@@ -246,6 +269,7 @@ async function endTrade() {
 
 const setMonitorCount = (count) => {
   monitorCount = count;
+  monitorPrice();
 };
 
 exports.binance = {
