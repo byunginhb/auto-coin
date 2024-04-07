@@ -25,6 +25,7 @@ let monitorIntervalHandler = null;
 
 let telegramBot = null;
 let monitorCount = 0;
+let leverage = 10;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -93,7 +94,7 @@ async function trade(symbol, interval = '1m') {
     // 매수 조건 확인
     if (positionAmt < 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
       await closePosition();
-      await openPosition(symbol, quantity, 'LONG', lastClose);
+      await openPosition(symbol, quantity * leverage, 'LONG', lastClose);
       sendMessage(
         `롱포지션 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.`
       );
@@ -104,7 +105,7 @@ async function trade(symbol, interval = '1m') {
       (rsi > rsiSellThreshold || lastClose > bb.upper)
     ) {
       await closePosition();
-      await openPosition(symbol, quantity, 'SHORT', lastClose);
+      await openPosition(symbol, quantity * leverage, 'SHORT', lastClose);
 
       sendMessage(
         `숏포지션 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 포지션 진입`
