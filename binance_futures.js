@@ -199,6 +199,10 @@ async function monitorPrice() {
 
   if (positions.length === 0) {
     console.log('No open positions to monitor.');
+    if (monitorCount >= 100) {
+      sendMessage('진행중인 포지션이 없습니다.');
+      monitorCount = 0;
+    }
     return;
   }
 
@@ -234,7 +238,7 @@ async function monitorPrice() {
 }
 
 async function startTrade(symbol, interval = '1m') {
-  monitorCount = 0;
+  monitorCount = 100;
   try {
     if (intervalHandler !== null) {
       clearInterval(intervalHandler);
@@ -276,6 +280,8 @@ const setMonitorCount = (count) => {
   monitorCount = count;
   monitorPrice();
 };
+
+startTrade('ETHUSDT');
 
 exports.binance = {
   startTrade,
