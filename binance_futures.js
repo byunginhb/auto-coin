@@ -60,8 +60,10 @@ async function getCurrentPrice(symbol) {
 }
 
 async function trade(symbol, interval = '1m') {
-  monitorCount++;
   try {
+    //레버리지 설정
+    await binance.futuresLeverage(symbol, leverage);
+
     const candles = await fetchCandlestickData(symbol, interval, 500);
     const { rsi, bb, lastClose } = await calculateIndicators(candles);
 
@@ -70,7 +72,7 @@ async function trade(symbol, interval = '1m') {
       (asset) => asset.asset === 'USDT'
     ).walletBalance;
     const currentPrice = await getCurrentPrice(symbol);
-    const quantity = (usdtBalance / currentPrice).toFixed(3); // Adjust based on the asset
+    const quantity = ((usdtBalance / currentPrice) * leverage).toFixed(3);
 
     const positions = accountInfo.positions.filter(
       (position) => parseFloat(position.positionAmt) !== 0
@@ -94,7 +96,7 @@ async function trade(symbol, interval = '1m') {
     // 매수 조건 확인
     if (positionAmt < 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
       await closePosition();
-      await openPosition(symbol, quantity * leverage, 'LONG', lastClose);
+      await openPosition(symbol, quantity, 'LONG', lastClose);
       sendMessage(
         `롱포지션 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.`
       );
@@ -105,7 +107,7 @@ async function trade(symbol, interval = '1m') {
       (rsi > rsiSellThreshold || lastClose > bb.upper)
     ) {
       await closePosition();
-      await openPosition(symbol, quantity * leverage, 'SHORT', lastClose);
+      await openPosition(symbol, quantity, 'SHORT', lastClose);
 
       sendMessage(
         `숏포지션 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 포지션 진입`
@@ -115,6 +117,7 @@ async function trade(symbol, interval = '1m') {
     }
   } catch (error) {
     console.error('Trade execution failed:', error);
+    sendMessage('선물 트레이딩 실패: ' + error.message);
   }
 }
 
@@ -187,6 +190,7 @@ async function closePosition() {
 }
 
 async function monitorPrice() {
+  monitorCount++;
   // 사용자의 현재 포지션 정보 조회
   const accountInfo = await binance.futuresAccount();
   const positions = accountInfo.positions.filter(
