@@ -110,7 +110,7 @@ async function trade(symbol, interval = '1m') {
       await openPosition(symbol, quantity, 'SHORT', lastClose);
 
       sendMessage(
-        `숏포지션 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 포지션 진입`
+        `숏포지션 조건 충족. ${quantity} 수량으로 ${currentPrice} ${symbol} 포지션 진입`
       );
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
