@@ -25,7 +25,7 @@ let monitorIntervalHandler = null;
 
 let telegramBot = null;
 let monitorCount = 0;
-let leverage = 10;
+let leverage = 25;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
