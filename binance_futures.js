@@ -226,6 +226,11 @@ async function monitorPrice() {
       )}%`
     );
 
+    //손절 로직
+    if (priceChangePercent <= -0.5) {
+      await closePosition();
+    }
+
     if (monitorCount >= 100) {
       sendMessage(
         `[Monitoring] ${symbol} - 진입 금액: ${entryPrice}, 현재 금액: ${markPrice}, 상태: ${priceChangePercent.toFixed(
