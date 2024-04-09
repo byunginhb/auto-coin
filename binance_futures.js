@@ -26,6 +26,7 @@ let monitorIntervalHandler = null;
 let telegramBot = null;
 let monitorCount = 0;
 let leverage = 25;
+let setLeverage = 30;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -62,7 +63,7 @@ async function getCurrentPrice(symbol) {
 async function trade(symbol, interval = '1m') {
   try {
     //레버리지 설정
-    await binance.futuresLeverage(symbol, leverage);
+    await binance.futuresLeverage(symbol, setLeverage);
 
     const candles = await fetchCandlestickData(symbol, interval, 500);
     const { rsi, bb, lastClose } = await calculateIndicators(candles);
