@@ -25,8 +25,9 @@ let monitorIntervalHandler = null;
 
 let telegramBot = null;
 let monitorCount = 0;
-let leverage = 25;
+let leverage = 21;
 let setLeverage = 30;
+let stopLossPercent = -7;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -228,7 +229,7 @@ async function monitorPrice() {
     );
 
     //손절 로직
-    if (priceChangePercent <= -0.5) {
+    if (priceChangePercent <= stopLossPercent) {
       await closePosition();
     }
 
@@ -286,8 +287,6 @@ const setMonitorCount = (count) => {
   monitorCount = count;
   monitorPrice();
 };
-
-startTrade('ETHUSDT');
 
 exports.binance = {
   startTrade,
