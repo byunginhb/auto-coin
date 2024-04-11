@@ -25,8 +25,9 @@ let monitorIntervalHandler = null;
 
 let telegramBot = null;
 let monitorCount = 0;
-let leverage = 25;
+let leverage = 21;
 let setLeverage = 30;
+let stopLossPercent = -7;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -95,7 +96,7 @@ async function trade(symbol, interval = '1m') {
     }
 
     // 매수 조건 확인
-    if (positionAmt < 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
+    if (positionAmt <= 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
       await closePosition();
       await openPosition(symbol, quantity, 'LONG', lastClose);
       sendMessage(
@@ -104,7 +105,7 @@ async function trade(symbol, interval = '1m') {
     }
     // 매도 조건 확인
     else if (
-      positionAmt > 0 &&
+      positionAmt >= 0 &&
       (rsi > rsiSellThreshold || lastClose > bb.upper)
     ) {
       await closePosition();
@@ -228,7 +229,7 @@ async function monitorPrice() {
     );
 
     //손절 로직
-    if (priceChangePercent <= -0.5) {
+    if (priceChangePercent <= stopLossPercent) {
       await closePosition();
     }
 
@@ -286,8 +287,6 @@ const setMonitorCount = (count) => {
   monitorCount = count;
   monitorPrice();
 };
-
-startTrade('ETHUSDT');
 
 exports.binance = {
   startTrade,
