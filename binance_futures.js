@@ -96,7 +96,7 @@ async function trade(symbol, interval = '1m') {
     }
 
     // 매수 조건 확인
-    if (positionAmt < 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
+    if (positionAmt <= 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
       await closePosition();
       await openPosition(symbol, quantity, 'LONG', lastClose);
       sendMessage(
@@ -105,7 +105,7 @@ async function trade(symbol, interval = '1m') {
     }
     // 매도 조건 확인
     else if (
-      positionAmt > 0 &&
+      positionAmt >= 0 &&
       (rsi > rsiSellThreshold || lastClose > bb.upper)
     ) {
       await closePosition();
