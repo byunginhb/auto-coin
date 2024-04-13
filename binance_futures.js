@@ -166,23 +166,25 @@ async function closePosition() {
     const positionAmt = parseFloat(pos.positionAmt);
     const markPrice = await getCurrentPrice(symbol);
 
-    let priceChangePercent = ((markPrice - entryPrice) / entryPrice) * 100;
+    let priceChangePercent =
+      ((markPrice - entryPrice) / entryPrice) * 100 * leverage;
 
     // 숏 포지션의 경우 수익률 계산 방식 조정
     if (positionAmt < 0) {
-      priceChangePercent = ((entryPrice - markPrice) / entryPrice) * 100;
+      priceChangePercent =
+        ((entryPrice - markPrice) / entryPrice) * 100 * leverage;
     }
 
     if (positionAmt > 0) {
       sendMessage(
-        `롱 포지션 청산 ${symbol} position with ${priceChangePercent.toFixed(
+        `롱 포지션 ${symbol} ${markPrice}가격으로 청산 position with ${priceChangePercent.toFixed(
           2
         )}% return.`
       );
       await binance.futuresMarketSell(symbol, Math.abs(positionAmt)); // 롱 포지션 청산
     } else {
       sendMessage(
-        `숏 포지션 청산 ${symbol} position with ${priceChangePercent.toFixed(
+        `숏 포지션 청산 ${symbol} ${markPrice}가격으로 청산 position with ${priceChangePercent.toFixed(
           2
         )}% return.`
       );
@@ -215,11 +217,11 @@ async function monitorPrice() {
     //const markPrice = parseFloat(pos.markPrice); // 현재 시장 가격
     const markPrice = await getCurrentPrice(symbol);
 
-    let priceChangePercent = ((markPrice - entryPrice) / entryPrice) * 100;
+    let priceChangePercent = ((markPrice - entryPrice) / entryPrice) * 100 * leverage;
 
     // 숏 포지션의 경우 수익률 계산 방식 조정
     if (positionAmt < 0) {
-      priceChangePercent = ((entryPrice - markPrice) / entryPrice) * 100;
+      priceChangePercent = ((entryPrice - markPrice) / entryPrice) * 100 * leverage;
     }
 
     console.log(
