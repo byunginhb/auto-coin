@@ -17,17 +17,18 @@ function truncateNumber(strNum, digits) {
 }
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 40; // RSI 과매도 조건
-const rsiSellThreshold = 60; // RSI 과매수 조건
+const rsiBuyThreshold = 30; // RSI 과매도 조건
+const rsiSellThreshold = 70; // RSI 과매수 조건
 
 let intervalHandler = null;
 let monitorIntervalHandler = null;
 
 let telegramBot = null;
 let monitorCount = 0;
-let leverage = 21;
+let leverage = 20;
 let setLeverage = 30;
-let stopLossPercent = -7;
+let stopLossPercent = -5;
+let stopPlusPercent = 15;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -61,7 +62,7 @@ async function getCurrentPrice(symbol) {
   return parseFloat(prices[symbol]);
 }
 
-async function trade(symbol, interval = '1m') {
+async function trade(symbol, interval = '5m') {
   try {
     //레버리지 설정
     await binance.futuresLeverage(symbol, setLeverage);
@@ -217,11 +218,13 @@ async function monitorPrice() {
     //const markPrice = parseFloat(pos.markPrice); // 현재 시장 가격
     const markPrice = await getCurrentPrice(symbol);
 
-    let priceChangePercent = ((markPrice - entryPrice) / entryPrice) * 100 * leverage;
+    let priceChangePercent =
+      ((markPrice - entryPrice) / entryPrice) * 100 * leverage;
 
     // 숏 포지션의 경우 수익률 계산 방식 조정
     if (positionAmt < 0) {
-      priceChangePercent = ((entryPrice - markPrice) / entryPrice) * 100 * leverage;
+      priceChangePercent =
+        ((entryPrice - markPrice) / entryPrice) * 100 * leverage;
     }
 
     console.log(
@@ -231,7 +234,10 @@ async function monitorPrice() {
     );
 
     //손절 로직
-    if (priceChangePercent <= stopLossPercent) {
+    if (
+      priceChangePercent <= stopLossPercent ||
+      priceChangePercent >= stopPlusPercent
+    ) {
       await closePosition();
     }
 
