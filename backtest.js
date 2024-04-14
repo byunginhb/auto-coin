@@ -75,7 +75,7 @@ const startBackTest = async () => {
 
   for (let i = 5; i < backTestBoundary; i++) {
     for (let j = 5; j < backTestBoundary; j++) {
-      const result = await backTest('BTCUSDT', '15m', 30, 70, -i, j, 20);
+      const result = await backTest('ETHUSDT', '15m', 30, 70, -i, j, 20);
       top3.push({ ...result, stopLossPercent: j, stopPlusPercent: i });
       console.log(result);
     }
@@ -85,6 +85,8 @@ const startBackTest = async () => {
   console.log(top3.slice(0, 3));
 };
 
-startBackTest();
+//startBackTest();
+
+//backTest('ETHUSDT', '15m', 30, 70, -5, 17, 20);
 
 exports.backTest = backTest;
