@@ -103,8 +103,9 @@ async function trade(symbol, interval = '15m') {
       sendMessage(
         `롱포지션 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
 rsi: ${rsi}
-bb.lower: ${bb.lower}
-bb.upper: ${bb.upper}
+lastClose: ${lastClose.toFixed(3)}
+bb.lower: ${bb.lower.toFixed(3)}
+bb.upper: ${bb.upper.toFixed(3)}
 `
       );
     }
@@ -119,8 +120,9 @@ bb.upper: ${bb.upper}
       sendMessage(
         `숏포지션 조건 충족. ${quantity} 수량으로 ${currentPrice} ${symbol} 포지션 진입
 rsi: ${rsi}
-bb.lower: ${bb.lower}
-bb.upper: ${bb.upper}        
+lastClose: ${lastClose.toFixed(3)}
+bb.lower: ${bb.lower.toFixed(3)}
+bb.upper: ${bb.upper.toFixed(3)}        
 `
       );
     } else {
