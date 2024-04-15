@@ -62,7 +62,7 @@ async function getCurrentPrice(symbol) {
   return parseFloat(prices[symbol]);
 }
 
-async function trade(symbol, interval = '5m') {
+async function trade(symbol, interval = '15m') {
   try {
     //레버리지 설정
     await binance.futuresLeverage(symbol, setLeverage);
@@ -101,7 +101,11 @@ async function trade(symbol, interval = '5m') {
       await closePosition();
       await openPosition(symbol, quantity, 'LONG', lastClose);
       sendMessage(
-        `롱포지션 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.`
+        `롱포지션 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
+rsi: ${rsi}
+bb.lower: ${bb.lower}
+bb.upper: ${bb.upper}
+`
       );
     }
     // 매도 조건 확인
@@ -113,7 +117,11 @@ async function trade(symbol, interval = '5m') {
       await openPosition(symbol, quantity, 'SHORT', lastClose);
 
       sendMessage(
-        `숏포지션 조건 충족. ${quantity} 수량으로 ${currentPrice} ${symbol} 포지션 진입`
+        `숏포지션 조건 충족. ${quantity} 수량으로 ${currentPrice} ${symbol} 포지션 진입
+rsi: ${rsi}
+bb.lower: ${bb.lower}
+bb.upper: ${bb.upper}        
+`
       );
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
