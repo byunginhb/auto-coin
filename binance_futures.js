@@ -75,7 +75,7 @@ async function trade(symbol, interval = '15m') {
       (asset) => asset.asset === 'USDT'
     ).walletBalance;
     const currentPrice = await getCurrentPrice(symbol);
-    const quantity = ((usdtBalance / currentPrice) * leverage).toFixed(3);
+    const quantity = ((usdtBalance / currentPrice) * leverage).toFixed(0);
 
     const positions = accountInfo.positions.filter(
       (position) => parseFloat(position.positionAmt) !== 0
