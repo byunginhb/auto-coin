@@ -21,8 +21,8 @@ const rsiBuyThreshold = 30; // RSI 과매도 조건
 const rsiSellThreshold = 70; // RSI 과매수 조건
 
 // 손절, 손익 조건
-const stopLossPercent = -5; // 손절 조건
-const stopPlusPercent = 5; // 손익 조건
+const stopLossPercent = -2; // 손절 조건
+const stopPlusPercent = 2; // 손익 조건
 let buyPrice = null;
 let position = null; // 포지션 상태 변경
 
