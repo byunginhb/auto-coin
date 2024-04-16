@@ -17,12 +17,17 @@ function truncateNumber(strNum, digits) {
 }
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 40; // RSI 과매도 조건
-const rsiSellThreshold = 60; // RSI 과매수 조건
+const rsiBuyThreshold = 30; // RSI 과매도 조건
+const rsiSellThreshold = 70; // RSI 과매수 조건
+
+// 손절, 손익 조건
+const stopLossPercent = -5; // 손절 조건
+const stopPlusPercent = 5; // 손익 조건
+let buyPrice = null;
+let position = null; // 포지션 상태 변경
 
 let intervalHandler = null;
 let telegramBot = null;
-let monitorCount = 0;
 
 function sendMessage(message) {
   telegramBot.sendMessage(chatId, message);
@@ -32,76 +37,7 @@ function setTelegramBot(bot) {
   telegramBot = bot;
 }
 
-async function fetchCandlestickData(symbol, interval = '5m') {
-  const limit = 2500; // 데이터 개수 제한
-
-  return new Promise((resolve, reject) => {
-    binance.candlesticks(
-      symbol,
-      interval,
-      (error, ticks, symbol) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(ticks);
-        }
-      },
-      { limit: limit, endTime: Date.now() }
-    );
-  });
-}
-
-async function backtest(symbol, rsiBuy = 30, rsiSell = 60, interval = '5m') {
-  try {
-    const ticks = await fetchCandlestickData(symbol, interval);
-    const closes = ticks.map((tick) => parseFloat(tick[4])); // 종가 데이터
-
-    // 지표 계산
-    const rsiValues = RSI.calculate({ period: 14, values: closes });
-    const bbValues = BollingerBands.calculate({
-      period: 20,
-      stdDev: 2,
-      values: closes,
-    });
-
-    let position = 'none'; // 현재 포지션 상태: none, buy
-    let buyPrice = 0;
-    let sellPrice = 0;
-    let profits = [];
-
-    for (let i = 20; i < closes.length; i++) {
-      const currentClose = closes[i];
-      const currentRSI = rsiValues[i - 14]; // RSI 계산을 위해 시작 인덱스 조정
-      const currentBB = bbValues[i - 20]; // BB 계산을 위해 시작 인덱스 조정
-
-      if (
-        position === 'none' &&
-        (currentRSI < rsiBuy || currentClose < currentBB.lower)
-      ) {
-        position = 'buy';
-        buyPrice = currentClose;
-        console.log(`Buy at ${buyPrice}`);
-      } else if (
-        position === 'buy' &&
-        (currentRSI > rsiSell || currentClose > currentBB.upper)
-      ) {
-        position = 'none';
-        sellPrice = currentClose;
-        profits.push(sellPrice - buyPrice);
-        console.log(`Sell at ${sellPrice}, Profit: ${sellPrice - buyPrice}`);
-      }
-    }
-
-    const totalProfit = profits.reduce((acc, profit) => acc + profit, 0);
-    console.log(`Total Profit: ${totalProfit}, Trade Count: ${profits.length}`);
-    sendMessage(`Total Profit: ${totalProfit}, Trade Count: ${profits.length}`);
-  } catch (error) {
-    console.error('Backtesting failed:', error);
-  }
-}
-
-async function trade(symbol, interval = '1m') {
-  monitorCount++;
+async function trade(symbol, interval = '5m') {
   try {
     // 마지막 500개의 캔들 데이터를 가져옵니다.
     const candles = await binance.futuresCandles(symbol, interval, {
@@ -133,60 +69,106 @@ async function trade(symbol, interval = '1m') {
     // 현재 가격 조회
     const currentPrices = await binance.prices();
     const currentPrice = currentPrices[symbol];
-    const quantity = (usdtBalance / currentPrice).toFixed(3);
+    const quantity = (usdtBalance / currentPrice).toFixed(6);
+
+    if (baseBalance > 0) {
+      position = 'buy';
+      //구매한 가격을 가져와서 buyPrice에 저장
+      const trades = await binance.trades(symbol);
+      buyPrice = trades[0].price;
+    }
 
     console.log(
       `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
     );
 
-    // sendMessage(
-    //   `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
-    // );
-
-    if (monitorCount >= 100) {
-      sendMessage(
-        `${symbol} - 거래 RSI: ${lastRSI}, 
-        마지막 금액: ${lastClose.toFixed(3)}, 
-        볼린저 하단: ${lastBB.lower.toFixed(3)}, 
-        볼린저 상단: ${lastBB.upper.toFixed(3)}`
-      );
-      monitorCount = 0;
-    }
-
     // 매수 조건 확인
     if (lastRSI < rsiBuyThreshold || lastClose < lastBB.lower) {
-      console.log(
-        `매수 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
-      );
       const orderResult = await binance.marketBuy(symbol, quantity);
       console.log(orderResult);
+
+      position = 'buy';
+      buyPrice = lastClose;
+
       sendMessage(
-        `매수 조건 충족. ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
+        `매수 조건 충족. 
+RSI : ${lastRSI},
+Close : ${lastClose},
+BB.lower : ${lastBB.lower},
+BB.upper : ${lastBB.upper}        
+${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
       );
     }
     // 매도 조건 확인
     else if (lastRSI > rsiSellThreshold || lastClose > lastBB.upper) {
-      console.log(
-        `매도 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
-      );
       const orderResult = await binance.marketSell(
         symbol,
         truncateNumber(baseBalance, 3)
       );
       console.log(orderResult);
+
+      position = 'none';
+      buyPrice = 0;
+
       sendMessage(
-        `매도 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
+        `매도 조건 충족. 
+RSI : ${lastRSI},
+Close : ${lastClose},
+BB.lower : ${lastBB.lower},
+BB.upper : ${lastBB.upper}
+${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
       );
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
+    }
+
+    // 손절 조건 확인
+    if (position === 'buy') {
+      checkStopLoss(symbol, currentPrice, baseBalance);
     }
   } catch (error) {
     console.error('Trade execution failed:', error);
   }
 }
 
+const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
+  const lossThreshold = buyPrice * (1 + stopLossPercent / 100);
+  const profitThreshold = buyPrice * (1 + stopPlusPercent / 100);
+
+  // 손절 조건 확인
+  if (currentPrice <= lossThreshold) {
+    //전액 손절
+    const orderResult = await binance.marketSell(
+      symbol,
+      truncateNumber(baseBalance, 3)
+    );
+    sendMessage(
+      `손절 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
+      손해 USDT: ${currentPrice * baseBalance}, 손해율 : ${
+        ((currentPrice - buyPrice) / buyPrice) * 100
+      }%
+      `
+    );
+    position = 'none'; // 포지션 초기화
+  }
+  // 수익 실현 조건 확인
+  else if (currentPrice >= profitThreshold) {
+    const orderResult = await binance.marketSell(
+      symbol,
+      truncateNumber(baseBalance, 3)
+    );
+    sendMessage(
+      `수익 실현 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
+      수익 USDT: ${currentPrice * baseBalance}, 수익율 : ${
+        ((currentPrice - buyPrice) / buyPrice) * 100
+      }%
+      `
+    );
+    position = 'none'; // 포지션 초기화
+  }
+};
+
 async function startTrade(symbol, interval = '1m') {
-  monitorCount = 0;
   try {
     if (intervalHandler !== null) {
       clearInterval(intervalHandler);
@@ -216,14 +198,54 @@ async function endTrade() {
   }
 }
 
-const setMonitorCount = (count) => {
-  monitorCount = count;
+const getBalance = async () => {
+  try {
+    const accountInfo = await binance.account();
+    const usdtBalance = accountInfo.balances.find(
+      (asset) => asset.asset === 'USDT'
+    ).free;
+    const baseBalance = accountInfo.balances.find(
+      (asset) => asset.asset === 'BTC'
+    ).free;
+
+    const btcTOusdt = await binance.futuresPrices('BTCUSDT');
+    const totalUSDTBalance =
+      parseFloat(usdtBalance) + parseFloat(baseBalance * btcTOusdt.BTCUSDT);
+
+    console.log(`USDT: ${usdtBalance}, BTC: ${baseBalance}`);
+    sendMessage(`USDT: ${totalUSDTBalance.toFixed(2)}`);
+
+    //현재 투자된 손해, 수익 계산
+    if (position === 'buy') {
+      const currentPrices = await binance.prices();
+      const currentPrice = currentPrices['BTCUSDT'];
+      const lossThreshold = buyPrice * (1 + stopLossPercent / 100);
+      const profitThreshold = buyPrice * (1 + stopPlusPercent / 100);
+
+      if (currentPrice <= lossThreshold) {
+        sendMessage(
+          `현재 손해 USDT: ${currentPrice * baseBalance}, 손해율 : ${
+            ((currentPrice - buyPrice) / buyPrice) * 100
+          }%
+          `
+        );
+      } else if (currentPrice >= profitThreshold) {
+        sendMessage(
+          `현재 수익 USDT: ${currentPrice * baseBalance}, 수익율 : ${
+            ((currentPrice - buyPrice) / buyPrice) * 100
+          }%
+          `
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Balance check failed:', error);
+  }
 };
 
 exports.binance = {
-  backtest,
   startTrade,
   endTrade,
   setTelegramBot,
-  setMonitorCount,
+  getBalance,
 };
