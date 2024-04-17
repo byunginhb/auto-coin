@@ -26,6 +26,8 @@ bot.on('message', (msg) => {
     binanceFutures.setMonitorCount(101);
   } else if (args[0] === '/잔액') {
     binance.getBalance();
+  } else if (args[0] === '/현재') {
+    binance.sendTradeData();
   } else {
     bot.sendMessage(chatId, `Received your message ${msg.text}`);
   }

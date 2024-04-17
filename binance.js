@@ -17,8 +17,8 @@ function truncateNumber(strNum, digits) {
 }
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 30; // RSI 과매도 조건
-const rsiSellThreshold = 70; // RSI 과매수 조건
+const rsiBuyThreshold = 35; // RSI 과매도 조건
+const rsiSellThreshold = 65; // RSI 과매수 조건
 
 // 손절, 손익 조건
 const stopLossPercent = -2; // 손절 조건
@@ -37,39 +37,61 @@ function setTelegramBot(bot) {
   telegramBot = bot;
 }
 
+const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
+  // 마지막 500개의 캔들 데이터를 가져옵니다.
+  const candles = await binance.futuresCandles(symbol, interval, {
+    limit: 500,
+  });
+  const closes = candles.map((c) => parseFloat(c[4]));
+  const baseAsset = symbol.replace('USDT', '');
+
+  // RSI 및 볼린저 밴드 지표 계산
+  const rsiValues = RSI.calculate({ period: 14, values: closes });
+  const bbValues = BollingerBands.calculate({
+    period: 20,
+    stdDev: 2,
+    values: closes,
+  });
+  const lastClose = closes[closes.length - 1];
+  const lastRSI = rsiValues[rsiValues.length - 1];
+  const lastBB = bbValues[bbValues.length - 1];
+
+  // 계정 잔액 조회
+  const accountInfo = await binance.account();
+  const usdtBalance = accountInfo.balances.find(
+    (asset) => asset.asset === 'USDT'
+  ).free;
+  const baseBalance = accountInfo.balances.find(
+    (asset) => asset.asset === baseAsset
+  ).free;
+
+  // 현재 가격 조회
+  const currentPrices = await binance.prices();
+  const currentPrice = currentPrices[symbol];
+  const quantity = (usdtBalance / currentPrice).toFixed(6);
+
+  return {
+    usdtBalance,
+    baseBalance,
+    lastRSI,
+    lastClose,
+    lastBB,
+    currentPrice,
+    quantity,
+  };
+};
+
 async function trade(symbol, interval = '5m') {
   try {
-    // 마지막 500개의 캔들 데이터를 가져옵니다.
-    const candles = await binance.futuresCandles(symbol, interval, {
-      limit: 500,
-    });
-    const closes = candles.map((c) => parseFloat(c[4]));
-    const baseAsset = symbol.replace('USDT', '');
-
-    // RSI 및 볼린저 밴드 지표 계산
-    const rsiValues = RSI.calculate({ period: 14, values: closes });
-    const bbValues = BollingerBands.calculate({
-      period: 20,
-      stdDev: 2,
-      values: closes,
-    });
-    const lastClose = closes[closes.length - 1];
-    const lastRSI = rsiValues[rsiValues.length - 1];
-    const lastBB = bbValues[bbValues.length - 1];
-
-    // 계정 잔액 조회
-    const accountInfo = await binance.account();
-    const usdtBalance = accountInfo.balances.find(
-      (asset) => asset.asset === 'USDT'
-    ).free;
-    const baseBalance = accountInfo.balances.find(
-      (asset) => asset.asset === baseAsset
-    ).free;
-
-    // 현재 가격 조회
-    const currentPrices = await binance.prices();
-    const currentPrice = currentPrices[symbol];
-    const quantity = (usdtBalance / currentPrice).toFixed(6);
+    const {
+      usdtBalance,
+      baseBalance,
+      lastRSI,
+      lastClose,
+      lastBB,
+      currentPrice,
+      quantity,
+    } = await getTradeData(symbol, interval);
 
     if (baseBalance > 0) {
       position = 'buy';
@@ -83,7 +105,7 @@ async function trade(symbol, interval = '5m') {
     );
 
     // 매수 조건 확인
-    if (lastRSI < rsiBuyThreshold || lastClose < lastBB.lower) {
+    if (lastRSI <= rsiBuyThreshold || lastClose <= lastBB.lower) {
       const orderResult = await binance.marketBuy(symbol, quantity);
       console.log(orderResult);
 
@@ -100,7 +122,7 @@ ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
       );
     }
     // 매도 조건 확인
-    else if (lastRSI > rsiSellThreshold || lastClose > lastBB.upper) {
+    else if (lastRSI >= rsiSellThreshold || lastClose >= lastBB.upper) {
       const orderResult = await binance.marketSell(
         symbol,
         truncateNumber(baseBalance, 3)
@@ -165,6 +187,34 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       `
     );
     position = 'none'; // 포지션 초기화
+  }
+};
+
+const sendTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
+  try {
+    const {
+      usdtBalance,
+      baseBalance,
+      lastRSI,
+      lastClose,
+      lastBB,
+      currentPrice,
+      quantity,
+    } = await getTradeData(symbol, interval);
+
+    sendMessage(
+      `현재 상태
+USDT: ${usdtBalance},
+BTC: ${baseBalance},
+RSI: ${lastRSI},
+Close: ${lastClose},
+BB.lower: ${lastBB.lower},
+BB.upper: ${lastBB.upper},
+Price: ${currentPrice},
+Quantity: ${quantity}`
+    );
+  } catch (error) {
+    console.error('Send trade data failed:', error);
   }
 };
 
@@ -248,4 +298,5 @@ exports.binance = {
   endTrade,
   setTelegramBot,
   getBalance,
+  sendTradeData,
 };
