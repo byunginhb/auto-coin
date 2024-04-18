@@ -150,7 +150,7 @@ ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
     }
     // 매도 조건 확인
     else if (
-      quantity > 0 &&
+      baseBalance > 0 &&
       (lastRSI >= rsiSellThreshold || lastClose >= lastBB.upper)
     ) {
       const orderResult = await binance.marketSell(symbol, baseBalance);
