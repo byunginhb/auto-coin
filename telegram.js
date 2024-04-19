@@ -25,9 +25,11 @@ bot.on('message', (msg) => {
   } else if (args[0] === '/체크') {
     binanceFutures.setMonitorCount(101);
   } else if (args[0] === '/잔액') {
-    binance.getBalance();
+    const symbol = args[1];
+    binance.getBalance(symbol);
   } else if (args[0] === '/현재') {
-    binance.sendTradeData();
+    const symbol = args[1];
+    binance.sendTradeData(symbol);
   } else {
     bot.sendMessage(chatId, `Received your message ${msg.text}`);
   }

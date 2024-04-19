@@ -41,8 +41,8 @@ const rsiBuyThreshold = 35; // RSI 과매도 조건
 const rsiSellThreshold = 65; // RSI 과매수 조건
 
 // 손절, 손익 조건
-const stopLossPercent = -8; // 손절 조건
-const stopPlusPercent = 8; // 손익 조건
+const stopLossPercent = -5; // 손절 조건
+const stopPlusPercent = 5; // 손익 조건
 let buyPrice = null;
 let position = null; // 포지션 상태 변경
 
@@ -94,7 +94,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
 
   return {
     usdtBalance,
-    baseBalance,
+    baseBalance: parseFloat(baseBalance),
     lastRSI,
     lastClose,
     lastBB,
@@ -117,7 +117,7 @@ async function trade(symbol, interval = '5m') {
       console.error('Failed to get trade data:', error);
     });
 
-    if (baseBalance > 0) {
+    if (baseBalance > 0.00001) {
       position = 'buy';
       //구매한 가격을 가져와서 buyPrice에 저장
       const trades = await binance.trades(symbol);
@@ -277,17 +277,18 @@ async function endTrade() {
   }
 }
 
-const getBalance = async () => {
+const getBalance = async (symbol = 'BTCUSDT') => {
   try {
+    const baseSysmbol = symbol.replace('USDT', '');
     const accountInfo = await binance.account();
     const usdtBalance = accountInfo.balances.find(
       (asset) => asset.asset === 'USDT'
     ).free;
     const baseBalance = accountInfo.balances.find(
-      (asset) => asset.asset === 'BTC'
+      (asset) => asset.asset === baseSysmbol
     ).free;
 
-    const btcTOusdt = await binance.futuresPrices('BTCUSDT');
+    const btcTOusdt = await binance.futuresPrices(symbol);
     const totalUSDTBalance =
       parseFloat(usdtBalance) + parseFloat(baseBalance * btcTOusdt.BTCUSDT);
 
@@ -297,7 +298,7 @@ const getBalance = async () => {
     //현재 투자된 손해, 수익 계산
     if (position === 'buy') {
       const currentPrices = await binance.prices();
-      const currentPrice = parseFloat(currentPrices['BTCUSDT']);
+      const currentPrice = parseFloat(currentPrices[symbol]);
 
       if (currentPrice <= buyPrice) {
         sendMessage(
