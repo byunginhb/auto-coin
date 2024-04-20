@@ -270,11 +270,13 @@ async function startTrade(symbol, interval = '5m') {
     const cooldownTime = cooldownMinutes * 60000; // 밀리초 단위로 변환
     const timeSinceLastClose = lastCloseTime ? now - lastCloseTime : null;
 
-    sendMessage(
-      `${symbol} - 선물 RSI: ${rsi}, 마지막 금액: ${lastClose}, 볼린저 하단: ${bb.lower.toFixed(
-        3
-      )}, 볼린저 상단: ${bb.upper.toFixed(3)}`
-    );
+    //     sendMessage(
+    //       `${symbol} -
+    // 선물 RSI: ${rsi},
+    // 마지막 금액: ${lastClose},
+    // 볼린저 하단: ${bb.lower.toFixed(3)},
+    // 볼린저 상단: ${bb.upper.toFixed(3)}`
+    //     );
 
     // 매수 조건 확인
     if (
@@ -333,7 +335,7 @@ async function endTrade() {
   }
 }
 
-startTrade('BTCUSDT', '5m');
+// startTrade('BTCUSDT', '5m');
 
 exports.binance = {
   startTrade,
