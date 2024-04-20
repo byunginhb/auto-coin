@@ -28,8 +28,9 @@ async function adjustQuantity(symbol, quantity) {
     // 주문 수량 조정
     quantity = Math.max(minQty, Math.min(quantity, maxQty));
     quantity = Math.floor(quantity / stepSize) * stepSize;
+    let fixedResult = Number(quantity.toFixed(10));
 
-    return quantity;
+    return fixedResult;
   } catch (error) {
     console.error('Failed to adjust quantity:', error);
     throw error;

@@ -218,6 +218,36 @@ async function monitorPositions() {
   }
 }
 
+async function adjustQuantity(symbol, quantity) {
+  if (quantity === 0) return 0;
+
+  try {
+    // 심볼 정보 가져오기
+    const exchangeInfo = await binance.exchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const lotSizeFilter = symbolInfo.filters.find(
+      (f) => f.filterType === 'LOT_SIZE'
+    );
+
+    // 필터 정보 확인
+    const minQty = parseFloat(lotSizeFilter.minQty);
+    const maxQty = parseFloat(lotSizeFilter.maxQty);
+    const stepSize = parseFloat(lotSizeFilter.stepSize);
+
+    // 주문 수량 조정
+    quantity = Math.max(minQty, Math.min(quantity, maxQty));
+    quantity = Math.floor(quantity / stepSize) * stepSize;
+    let fixedResult = Number(quantity.toFixed(10));
+
+    return fixedResult;
+  } catch (error) {
+    console.error('Failed to adjust quantity:', error);
+    throw error;
+  }
+}
+
+//startTrade('BTCUSDT', '5m');
+
 // 트레이딩 시작
 async function startTrade(symbol, interval = '5m') {
   try {
@@ -251,8 +281,9 @@ async function startTrade(symbol, interval = '5m') {
     const currentPrice = await getCurrentPrice(symbol);
 
     // 포지션 사이징 로직
-    const maxRiskAmount = usdtBalance;
-    const quantity = Math.floor((maxRiskAmount / currentPrice) * leverage);
+    const quantity = (parseFloat(usdtBalance) / currentPrice) * leverage;
+
+    const adjustedQuantity = await adjustQuantity(symbol, quantity);
 
     const positions = accountInfo.positions.filter(
       (position) => parseFloat(position.positionAmt) !== 0
@@ -286,9 +317,9 @@ async function startTrade(symbol, interval = '5m') {
       );
 
       await closePosition(symbol, positionAmt, currentPrice);
-      await openPosition(symbol, quantity, 'LONG', lastClose);
+      await openPosition(symbol, adjustedQuantity, 'LONG', lastClose);
       sendMessage(
-        `롱포지션 조건 충족. ${quantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.`
+        `롱포지션 조건 충족. ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.`
       );
     }
     // 매도 조건 확인
@@ -306,10 +337,10 @@ async function startTrade(symbol, interval = '5m') {
   볼린저 상단: ${bb.upper.toFixed(3)}`
       );
       await closePosition(symbol, positionAmt, currentPrice);
-      await openPosition(symbol, quantity, 'SHORT', lastClose);
+      await openPosition(symbol, adjustedQuantity, 'SHORT', lastClose);
 
       sendMessage(
-        `숏포지션 조건 충족. ${quantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행`
+        `숏포지션 조건 충족. ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행`
       );
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
@@ -341,8 +372,6 @@ async function endTrade() {
     console.error('Trade execution end failed:', error);
   }
 }
-
-// startTrade('BTCUSDT', '5m');
 
 exports.binance = {
   startTrade,
