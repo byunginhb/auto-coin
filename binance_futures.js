@@ -15,7 +15,7 @@ function truncateNumber(strNum, digits) {
   let num = Number(strNum);
   let factor = Math.pow(10, digits);
   num = Math.floor(num * factor) / factor;
-  return num.toString();
+  return num;
 }
 
 // 매수 및 매도 조건 설정
@@ -98,7 +98,7 @@ async function openPosition(symbol, quantity, type, entryPrice) {
       console.log(`Long position opened: `, order);
       sendMessage(`${quantity} ${entryPrice} 롱 포지션 실행.`);
     } else if (type === 'SHORT') {
-      const order = await binance.futuresMarketSell(symbol, quantity);
+      const order = await binance.futuresMarketSell(symbol, 0.022);
       console.log(`Short position opened: `, order);
       sendMessage(`${quantity} ${entryPrice} 숏 포지션 실행.`);
     }
@@ -222,22 +222,20 @@ async function adjustQuantity(symbol, quantity) {
   if (quantity === 0) return 0;
 
   try {
-    // 심볼 정보 가져오기
     const exchangeInfo = await binance.exchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const lotSizeFilter = symbolInfo.filters.find(
       (f) => f.filterType === 'LOT_SIZE'
     );
 
-    // 필터 정보 확인
     const minQty = parseFloat(lotSizeFilter.minQty);
     const maxQty = parseFloat(lotSizeFilter.maxQty);
     const stepSize = parseFloat(lotSizeFilter.stepSize);
+    const stepPrecision = stepSize.toString().split('.')[1]?.length || 0;
 
-    // 주문 수량 조정
     quantity = Math.max(minQty, Math.min(quantity, maxQty));
     quantity = Math.floor(quantity / stepSize) * stepSize;
-    let fixedResult = Number(quantity.toFixed(10));
+    let fixedResult = Number(quantity.toFixed(stepPrecision));
 
     return fixedResult;
   } catch (error) {
@@ -283,7 +281,7 @@ async function startTrade(symbol, interval = '5m') {
     // 포지션 사이징 로직
     const quantity = (parseFloat(usdtBalance) / currentPrice) * leverage;
 
-    const adjustedQuantity = await adjustQuantity(symbol, quantity);
+    const adjustedQuantity = truncateNumber(quantity, 3);
 
     const positions = accountInfo.positions.filter(
       (position) => parseFloat(position.positionAmt) !== 0

@@ -104,7 +104,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
-//trade('BTCUSDT', '5m');
+trade('BTCUSDT', '5m');
 
 async function trade(symbol, interval = '5m') {
   try {
@@ -130,7 +130,6 @@ async function trade(symbol, interval = '5m') {
     console.log(
       `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
     );
-
     // 매수 조건 확인
     if (
       quantity > 0 &&
@@ -153,7 +152,7 @@ ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
     }
     // 매도 조건 확인
     else if (
-      baseBalance > 0 &&
+      baseBalance > 0.00001 &&
       (lastRSI >= rsiSellThreshold || lastClose >= lastBB.upper)
     ) {
       const adjustBalance = await adjustQuantity(symbol, baseBalance);
