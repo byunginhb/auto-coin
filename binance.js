@@ -103,6 +103,8 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
+//trade('BTCUSDT', '5m');
+
 async function trade(symbol, interval = '5m') {
   try {
     const {
@@ -153,7 +155,8 @@ ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
       baseBalance > 0 &&
       (lastRSI >= rsiSellThreshold || lastClose >= lastBB.upper)
     ) {
-      const orderResult = await binance.marketSell(symbol, baseBalance);
+      const adjustBalance = await adjustQuantity(symbol, baseBalance);
+      const orderResult = await binance.marketSell(symbol, adjustBalance);
       console.log(orderResult);
 
       position = 'none';
@@ -177,6 +180,7 @@ ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
     }
   } catch (error) {
     console.error('Trade execution failed:', error);
+    sendMessage('트레이딩 실행 중 오류가 발생했습니다.', error);
   }
 }
 
@@ -262,8 +266,6 @@ async function startTrade(symbol = 'BTCUSDT', interval = '5m') {
     console.error('Trade execution start failed:', error);
   }
 }
-
-trade('BTCUSDT', '5m');
 
 async function endTrade() {
   try {
