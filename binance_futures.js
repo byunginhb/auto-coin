@@ -204,13 +204,14 @@ async function monitorPositions() {
             return;
           }
         }
-      } else {
-        sendMessage(
-          `[Monitoring] ${symbol} - 진입 금액: ${entryPrice}, 현재 금액: ${markPrice}, 수익률: ${priceChangePercent.toFixed(
-            2
-          )}%`
-        );
       }
+      //  else {
+      //   sendMessage(
+      //     `[Monitoring] ${symbol} - 진입 금액: ${entryPrice}, 현재 금액: ${markPrice}, 수익률: ${priceChangePercent.toFixed(
+      //       2
+      //     )}%`
+      //   );
+      // }
     }
   } catch (error) {
     console.error('Failed to monitor positions:', error);
@@ -218,36 +219,9 @@ async function monitorPositions() {
   }
 }
 
-async function adjustQuantity(symbol, quantity) {
-  if (quantity === 0) return 0;
+startTrade('BTCUSDT', '5m');
 
-  try {
-    const exchangeInfo = await binance.exchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const lotSizeFilter = symbolInfo.filters.find(
-      (f) => f.filterType === 'LOT_SIZE'
-    );
-
-    const minQty = parseFloat(lotSizeFilter.minQty);
-    const maxQty = parseFloat(lotSizeFilter.maxQty);
-    const stepSize = parseFloat(lotSizeFilter.stepSize);
-    const stepPrecision = stepSize.toString().split('.')[1]?.length || 0;
-
-    quantity = Math.max(minQty, Math.min(quantity, maxQty));
-    quantity = Math.floor(quantity / stepSize) * stepSize;
-    let fixedResult = Number(quantity.toFixed(stepPrecision));
-
-    return fixedResult;
-  } catch (error) {
-    console.error('Failed to adjust quantity:', error);
-    throw error;
-  }
-}
-
-//startTrade('BTCUSDT', '5m');
-
-// 트레이딩 시작
-async function startTrade(symbol, interval = '5m') {
+async function trade(symbol, interval = '5m') {
   try {
     // 쿨다운 시간 계산 (분봉 간격의 5배)
     const intervalMinutes = parseFloat(interval.replace(/[^0-9\.]+/g, ''));
@@ -343,18 +317,31 @@ async function startTrade(symbol, interval = '5m') {
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
     }
-
-    // 1분마다 trade 함수 실행
-    intervalHandler = setInterval(
-      () => startTrade(symbol, interval),
-      60 * 1000
-    );
-    monitorIntervalHandler = setInterval(monitorPositions, 20 * 1000);
-
-    console.log('트레이딩을 시작합니다.');
   } catch (error) {
     console.error('Trade execution start failed:', error);
     sendMessage('선물 트레이딩 실패: ' + error.message);
+  }
+}
+
+// 트레이딩 시작
+async function startTrade(symbol, interval = '5m') {
+  try {
+    if (intervalHandler !== null) {
+      clearInterval(intervalHandler);
+      clearInterval(monitorIntervalHandler);
+
+      intervalHandler = null;
+      monitorIntervalHandler = null;
+      sendMessage('기존 실행된 선물 트레이딩을 종료합니다.');
+    }
+
+    // 1분마다 trade 함수 실행
+    intervalHandler = setInterval(() => trade(symbol, interval), 60 * 1000);
+    monitorIntervalHandler = setInterval(monitorPositions, 20 * 1000);
+
+    sendMessage('트레이딩을 시작합니다.');
+  } catch (error) {
+    sendMessage('Trade execution start failed:', error);
   }
 }
 
