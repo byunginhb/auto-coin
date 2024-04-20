@@ -19,7 +19,7 @@ function truncateNumber(strNum, digits) {
 }
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 30; // RSI 과매도 조건
+const rsiBuyThreshold = 40; // RSI 과매도 조건
 const rsiSellThreshold = 70; // RSI 과매수 조건
 
 let intervalHandler = null;
