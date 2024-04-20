@@ -251,7 +251,7 @@ async function startTrade(symbol, interval = '5m') {
     const currentPrice = await getCurrentPrice(symbol);
 
     // 포지션 사이징 로직
-    const maxRiskAmount = usdtBalance * 0.02; // 최대 리스크 금액 (USDT 잔고의 2%)
+    const maxRiskAmount = usdtBalance;
     const quantity = Math.floor((maxRiskAmount / currentPrice) * leverage);
 
     const positions = accountInfo.positions.filter(
@@ -270,14 +270,6 @@ async function startTrade(symbol, interval = '5m') {
     const cooldownTime = cooldownMinutes * 60000; // 밀리초 단위로 변환
     const timeSinceLastClose = lastCloseTime ? now - lastCloseTime : null;
 
-    //     sendMessage(
-    //       `${symbol} -
-    // 선물 RSI: ${rsi},
-    // 마지막 금액: ${lastClose},
-    // 볼린저 하단: ${bb.lower.toFixed(3)},
-    // 볼린저 상단: ${bb.upper.toFixed(3)}`
-    //     );
-
     // 매수 조건 확인
     if (
       positionAmt <= 0 &&
@@ -285,6 +277,14 @@ async function startTrade(symbol, interval = '5m') {
       (timeSinceLastClose === null || timeSinceLastClose >= cooldownTime) &&
       rsi <= 50
     ) {
+      sendMessage(
+        `${symbol} -
+선물 RSI: ${rsi},
+마지막 금액: ${lastClose},
+볼린저 하단: ${bb.lower.toFixed(3)},
+볼린저 상단: ${bb.upper.toFixed(3)}`
+      );
+
       await closePosition(symbol, positionAmt, currentPrice);
       await openPosition(symbol, quantity, 'LONG', lastClose);
       sendMessage(
@@ -298,6 +298,13 @@ async function startTrade(symbol, interval = '5m') {
       (timeSinceLastClose === null || timeSinceLastClose >= cooldownTime) &&
       rsi >= 50
     ) {
+      sendMessage(
+        `${symbol} -
+  선물 RSI: ${rsi},
+  마지막 금액: ${lastClose},
+  볼린저 하단: ${bb.lower.toFixed(3)},
+  볼린저 상단: ${bb.upper.toFixed(3)}`
+      );
       await closePosition(symbol, positionAmt, currentPrice);
       await openPosition(symbol, quantity, 'SHORT', lastClose);
 
