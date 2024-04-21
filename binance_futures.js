@@ -29,11 +29,9 @@ let telegramBot = null;
 let leverage = 20;
 let stopLossPercent = -5;
 let stopPlusPercent = 15;
-let maxLossPercent = 10; // 전체 잔고 대비 최대 손실 비율 (10%)
-let maxLossesPerPeriod = 5; // 일정 기간 내 최대 손실 횟수
-let lossPeriodMinutes = 1440; // 손실 횟수 측정 기간 (분 단위, 1일 = 1440분)
-let lossCount = 0;
-let lastLossTime = null;
+
+let coolDownTime = 0;
+let coolDownMilliseconds = 0;
 
 // 텔레그램 봇 설정
 function setTelegramBot(bot) {
@@ -168,50 +166,9 @@ async function monitorPositions() {
           `${symbol} 포지션 청산 - 수익률: ${priceChangePercent.toFixed(2)}%`
         );
 
-        // 손실 횟수 카운트 및 손실 비율 체크
-        if (priceChangePercent <= stopLossPercent) {
-          lossCount++;
-          const now = new Date();
-          if (
-            lastLossTime === null ||
-            now - lastLossTime >= lossPeriodMinutes * 60000
-          ) {
-            lossCount = 1;
-            lastLossTime = now;
-          }
-
-          if (lossCount >= maxLossesPerPeriod) {
-            sendMessage(
-              `최대 손실 횟수 (${maxLossesPerPeriod})를 초과하여 트레이딩을 중지합니다.`
-            );
-            endTrade();
-            return;
-          }
-
-          const usdtBalance = accountInfo.assets.find(
-            (asset) => asset.asset === 'USDT'
-          ).walletBalance;
-          const totalBalance = parseFloat(usdtBalance);
-          const currentLossPercent =
-            ((totalBalance - accountInfo.totalMarginBalance) / totalBalance) *
-            100;
-
-          if (currentLossPercent >= maxLossPercent) {
-            sendMessage(
-              `최대 손실 비율 (${maxLossPercent}%)을 초과하여 트레이딩을 중지합니다.`
-            );
-            endTrade();
-            return;
-          }
-        }
+        // coolDownTime 설정
+        coolDownTime = new Date().getTime() + coolDownMilliseconds;
       }
-      //  else {
-      //   sendMessage(
-      //     `[Monitoring] ${symbol} - 진입 금액: ${entryPrice}, 현재 금액: ${markPrice}, 수익률: ${priceChangePercent.toFixed(
-      //       2
-      //     )}%`
-      //   );
-      // }
     }
   } catch (error) {
     console.error('Failed to monitor positions:', error);
@@ -219,25 +176,13 @@ async function monitorPositions() {
   }
 }
 
-startTrade('BTCUSDT', '5m');
+//trade('BTCUSDT', '5m');
 
 async function trade(symbol, interval = '5m') {
   try {
     // 쿨다운 시간 계산 (분봉 간격의 5배)
     const intervalMinutes = parseFloat(interval.replace(/[^0-9\.]+/g, ''));
-    const cooldownMinutes = intervalMinutes * 5;
-
-    if (intervalHandler !== null) {
-      clearInterval(intervalHandler);
-      intervalHandler = null;
-      console.log('Stopping existing trade...');
-    }
-
-    if (monitorIntervalHandler !== null) {
-      clearInterval(monitorIntervalHandler);
-      monitorIntervalHandler = null;
-      console.log('Stopping existing monitoring...');
-    }
+    coolDownMilliseconds = intervalMinutes * 5 * 60 * 1000;
 
     // 레버리지 설정
     const setLeverage = 30;
@@ -254,7 +199,6 @@ async function trade(symbol, interval = '5m') {
 
     // 포지션 사이징 로직
     const quantity = (parseFloat(usdtBalance) / currentPrice) * leverage;
-
     const adjustedQuantity = truncateNumber(quantity, 3);
 
     const positions = accountInfo.positions.filter(
@@ -262,23 +206,16 @@ async function trade(symbol, interval = '5m') {
     );
 
     let positionAmt = 0;
-    let lastCloseTime = null;
     if (positions.length > 0) {
       const pos = positions[0];
       positionAmt = parseFloat(pos.positionAmt);
-      lastCloseTime = new Date(pos.updateTime);
     }
-
-    const now = new Date();
-    const cooldownTime = cooldownMinutes * 60000; // 밀리초 단위로 변환
-    const timeSinceLastClose = lastCloseTime ? now - lastCloseTime : null;
 
     // 매수 조건 확인
     if (
       positionAmt <= 0 &&
       (rsi < rsiBuyThreshold || lastClose < bb.lower) &&
-      (timeSinceLastClose === null || timeSinceLastClose >= cooldownTime) &&
-      rsi <= 50
+      coolDownTime < new Date().getTime()
     ) {
       sendMessage(
         `${symbol} -
@@ -298,8 +235,7 @@ async function trade(symbol, interval = '5m') {
     else if (
       positionAmt >= 0 &&
       (rsi > rsiSellThreshold || lastClose > bb.upper) &&
-      (timeSinceLastClose === null || timeSinceLastClose >= cooldownTime) &&
-      rsi >= 50
+      coolDownTime < new Date().getTime()
     ) {
       sendMessage(
         `${symbol} -
