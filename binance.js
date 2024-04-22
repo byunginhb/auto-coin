@@ -105,7 +105,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
-trade('BTCUSDT', '5m');
+// trade('BTCUSDT', '5m');
 
 async function trade(symbol, interval = '5m') {
   try {
