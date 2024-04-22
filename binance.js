@@ -104,7 +104,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
-//trade('BTCUSDT', '5m');
+trade('BTCUSDT', '5m');
 
 async function trade(symbol, interval = '5m') {
   try {
@@ -194,7 +194,7 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
     // 손절 조건 확인
     if (currentPrice <= lossThreshold) {
       //전액 손절
-      const orderResult = await binance.marketSell(symbol, quantity);
+      await binance.marketSell(symbol, quantity);
       sendMessage(
         `손절 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
       손해 USDT: ${(currentPrice - buyPrice) * baseBalance}, 손해율 : ${
@@ -206,7 +206,7 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
     }
     // 수익 실현 조건 확인
     else if (currentPrice >= profitThreshold) {
-      const orderResult = await binance.marketSell(symbol, quantity);
+      await binance.marketSell(symbol, quantity);
       sendMessage(
         `수익 실현 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
       수익 USDT: ${(currentPrice - buyPrice) * baseBalance}, 수익율 : ${
@@ -218,6 +218,7 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
     }
   } catch (error) {
     console.error('Stop loss check failed:', error);
+    sendMessage('손절 및 수익 실현 체크 중 오류가 발생했습니다.', error);
   }
 };
 

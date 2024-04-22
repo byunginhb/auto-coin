@@ -272,6 +272,8 @@ async function startTrade(symbol, interval = '5m') {
       sendMessage('기존 실행된 선물 트레이딩을 종료합니다.');
     }
 
+    trade(symbol, interval);
+
     // 1분마다 trade 함수 실행
     intervalHandler = setInterval(() => trade(symbol, interval), 60 * 1000);
     monitorIntervalHandler = setInterval(monitorPositions, 20 * 1000);
