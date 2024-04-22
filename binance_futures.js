@@ -102,6 +102,7 @@ async function openPosition(symbol, quantity, type, entryPrice) {
     }
   } catch (error) {
     console.error(`Failed to open ${type} position for ${symbol}:`, error);
+    sendMessage(`포지션 오픈 실패: ${error.message}`);
     throw error;
   }
 }
