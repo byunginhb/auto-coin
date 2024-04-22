@@ -46,6 +46,7 @@ const stopLossPercent = -5; // 손절 조건
 const stopPlusPercent = 5; // 손익 조건
 let buyPrice = null;
 let position = null; // 포지션 상태 변경
+let buyUsdtAmount = 0;
 
 let intervalHandler = null;
 let telegramBot = null;
@@ -139,7 +140,8 @@ async function trade(symbol, interval = '5m') {
       console.log(orderResult);
 
       position = 'buy';
-      buyPrice = lastClose;
+      buyPrice = orderResult?.fills[0]?.price;
+      buyUsdtAmount = usdtBalance;
 
       sendMessage(
         `매수 조건 충족. 
@@ -147,7 +149,7 @@ RSI : ${lastRSI},
 Close : ${lastClose},
 BB.lower : ${lastBB.lower},
 BB.upper : ${lastBB.upper}        
-${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
+${usdtBalance}USDT 수량으로 ${symbol} ${buyPrice}가격으로 ${quantity}개 매수 실행.`
       );
     }
     // 매도 조건 확인
@@ -161,6 +163,7 @@ ${usdtBalance} 수량으로 ${currentPrice} ${symbol} 매수 실행.`
 
       position = 'none';
       buyPrice = 0;
+      buyUsdtAmount = 0;
 
       sendMessage(
         `매도 조건 충족. 
@@ -175,7 +178,7 @@ ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
     }
 
     // 손절 조건 확인
-    if (position === 'buy') {
+    if (position === 'buy' && buyUsdtAmount > 0) {
       checkStopLoss(symbol, parseFloat(currentPrice), parseFloat(baseBalance));
     }
   } catch (error) {
@@ -186,31 +189,32 @@ ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
 
 const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
   try {
-    const lossThreshold = buyPrice * (1 + stopLossPercent / 100);
-    const profitThreshold = buyPrice * (1 + stopPlusPercent / 100);
+    const lossThreshold = buyUsdtAmount * (1 + stopLossPercent / 100);
+    const profitThreshold = buyUsdtAmount * (1 + stopPlusPercent / 100);
+    const currentUSDTAmount = currentPrice * baseBalance;
 
     const quantity = await adjustQuantity(symbol, baseBalance);
 
     // 손절 조건 확인
-    if (currentPrice <= lossThreshold) {
+    if (currentUSDTAmount <= lossThreshold) {
       //전액 손절
       await binance.marketSell(symbol, quantity);
       sendMessage(
         `손절 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
-      손해 USDT: ${(currentPrice - buyPrice) * baseBalance}, 손해율 : ${
-          ((currentPrice - buyPrice) / buyPrice) * 100
+      손해 USDT: ${currentUSDTAmount - buyUsdtAmount}, 손해율 : ${
+          ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) * 100
         }%
       `
       );
       position = 'none'; // 포지션 초기화
     }
     // 수익 실현 조건 확인
-    else if (currentPrice >= profitThreshold) {
+    else if (currentUSDTAmount >= profitThreshold) {
       await binance.marketSell(symbol, quantity);
       sendMessage(
         `수익 실현 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
-      수익 USDT: ${(currentPrice - buyPrice) * baseBalance}, 수익율 : ${
-          ((currentPrice - buyPrice) / buyPrice) * 100
+      수익 USDT: ${currentUSDTAmount - buyUsdtAmount}, 수익율 : ${
+          ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) * 100
         }%
       `
       );

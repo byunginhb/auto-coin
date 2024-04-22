@@ -94,15 +94,18 @@ async function openPosition(symbol, quantity, type, entryPrice) {
     if (type === 'LONG') {
       const order = await binance.futuresMarketBuy(symbol, quantity);
       console.log(`Long position opened: `, order);
-      sendMessage(`${quantity} ${entryPrice} 롱 포지션 실행.`);
+      // sendMessage(`${quantity} ${entryPrice} 롱 포지션 실행.`);
     } else if (type === 'SHORT') {
-      const order = await binance.futuresMarketSell(symbol, 0.022);
+      const order = await binance.futuresMarketSell(symbol, quantity);
       console.log(`Short position opened: `, order);
-      sendMessage(`${quantity} ${entryPrice} 숏 포지션 실행.`);
+      // sendMessage(`${quantity} ${entryPrice} 숏 포지션 실행.`);
     }
   } catch (error) {
     console.error(`Failed to open ${type} position for ${symbol}:`, error);
-    sendMessage(`포지션 오픈 실패: ${error.message}`);
+    sendMessage(
+      `포지션 오픈 실패: symbol, quantity, type, entryPrice, 
+${symbol}, ${quantity}, ${type}, ${entryPrice} ${error.message}`
+    );
     throw error;
   }
 }
@@ -141,30 +144,19 @@ async function monitorPositions() {
       const entryPrice = parseFloat(pos.entryPrice);
       const positionAmt = parseFloat(pos.positionAmt);
       const markPrice = await getCurrentPrice(symbol);
-
-      let priceChangePercent =
-        ((markPrice - entryPrice) / entryPrice) * 100 * leverage;
-
-      // 숏 포지션의 경우 수익률 계산 방식 조정
-      if (positionAmt < 0) {
-        priceChangePercent =
-          ((entryPrice - markPrice) / entryPrice) * 100 * leverage;
-      }
-
-      console.log(
-        `[Monitoring] ${symbol} - Entry Price: ${entryPrice}, Mark Price: ${markPrice}, Change: ${priceChangePercent.toFixed(
-          2
-        )}%`
-      );
+      const profitPercent =
+        (positions[0].unrealizedProfit / positions[0].initialMargin) * 100;
 
       // 손절 및 익절 로직
       if (
-        priceChangePercent <= stopLossPercent ||
-        priceChangePercent >= stopPlusPercent
+        profitPercent <= stopLossPercent ||
+        profitPercent >= stopPlusPercent
       ) {
         await closePosition(symbol, positionAmt, markPrice);
         sendMessage(
-          `${symbol} 포지션 청산 - 수익률: ${priceChangePercent.toFixed(2)}%`
+          `${symbol} 포지션 청산 - 실현손익: ${pos.unrealizedProfit.toFixed(
+            2
+          )}USDT 률: ${profitPercent.toFixed(2)}%`
         );
 
         // coolDownTime 설정
