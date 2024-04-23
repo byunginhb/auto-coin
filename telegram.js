@@ -23,7 +23,7 @@ bot.on('message', (msg) => {
     binanceFutures.endTrade();
     bot.sendMessage(chatId, `자동 거래 종료`);
   } else if (args[0] === '/체크') {
-    binanceFutures.setMonitorCount(101);
+    binanceFutures.sendPositionData();
   } else if (args[0] === '/잔액') {
     const symbol = args[1];
     binance.getBalance(symbol);
