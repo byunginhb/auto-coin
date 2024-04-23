@@ -105,7 +105,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
-trade('BTCUSDT', '5m');
+//trade('BTCUSDT', '5m');
 
 async function trade(symbol, interval = '5m') {
   try {
@@ -128,12 +128,6 @@ async function trade(symbol, interval = '5m') {
       buyPrice = parseFloat(trades[trades.length - 1].price);
       buyUsdtAmount = trades[trades.length - 1].quoteQty;
     }
-
-    await checkStopLoss(
-      symbol,
-      parseFloat(currentPrice),
-      parseFloat(baseBalance)
-    );
 
     console.log(
       `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
