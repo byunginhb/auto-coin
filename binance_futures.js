@@ -112,12 +112,13 @@ ${symbol}, ${quantity}, ${type}, ${entryPrice} ${error.message}`
 async function closePosition(symbol, positionAmt) {
   try {
     if (positionAmt > 0) {
-      await binance.futuresMarketSell(symbol, truncateNumber(positionAmt, 3));
+      await binance.futuresMarketSell(symbol, Math.abs(positionAmt));
     } else {
-      await binance.futuresMarketBuy(symbol, truncateNumber(positionAmt, 3));
+      await binance.futuresMarketBuy(symbol, Math.abs(positionAmt));
     }
   } catch (error) {
     console.error(`Failed to close position for ${symbol}:`, error);
+    sendMessage(`포지션 청산 실패: ${error.message}`);
     throw error;
   }
 }
@@ -191,8 +192,8 @@ async function monitorPositions() {
         await closePosition(symbol, positionAmt);
         sendMessage(
           `${symbol} 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}
-USDT 손익률: ${profitPercent.toFixed(2)}%`
+실현손익: ${unrealizedProfit.toFixed(2)}USDT
+손익률: ${profitPercent.toFixed(2)}%`
         );
 
         // 손절시 coolDownTime 설정
