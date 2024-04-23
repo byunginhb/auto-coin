@@ -141,11 +141,9 @@ async function monitorPositions() {
 
     for (let pos of positions) {
       const symbol = pos.symbol;
-      const entryPrice = parseFloat(pos.entryPrice);
       const positionAmt = parseFloat(pos.positionAmt);
       const markPrice = await getCurrentPrice(symbol);
-      const profitPercent =
-        (positions[0].unrealizedProfit / positions[0].initialMargin) * 100;
+      const profitPercent = (pos.unrealizedProfit / pos.initialMargin) * 100;
 
       // 손절 및 익절 로직
       if (
@@ -156,7 +154,7 @@ async function monitorPositions() {
         sendMessage(
           `${symbol} 포지션 청산 - 실현손익: ${pos.unrealizedProfit.toFixed(
             2
-          )}USDT 률: ${profitPercent.toFixed(2)}%`
+          )}USDT 손익률: ${profitPercent.toFixed(2)}%`
         );
 
         // coolDownTime 설정
