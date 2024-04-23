@@ -123,25 +123,30 @@ async function closePosition(symbol, positionAmt) {
 }
 
 const sendPositionData = async () => {
-  const accountInfo = await binance.futuresAccount();
-  const positions = accountInfo.positions.filter(
-    (position) => parseFloat(position.positionAmt) !== 0
-  );
-
-  if (positions.length === 0) {
-    sendMessage('진행된 포지션이 없습니다.');
-    return;
-  }
-
-  for (let pos of positions) {
-    const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-      await getPositionData(pos);
-
-    sendMessage(
-      `${symbol} - 포지션: ${positionAmt}, 실현손익: ${unrealizedProfit.toFixed(
-        2
-      )}USDT, 손익률: ${profitPercent.toFixed(2)}%`
+  try {
+    const accountInfo = await binance.futuresAccount();
+    const positions = accountInfo.positions.filter(
+      (position) => parseFloat(position.positionAmt) !== 0
     );
+
+    if (positions.length === 0) {
+      sendMessage('진행된 포지션이 없습니다.');
+      return;
+    }
+
+    for (let pos of positions) {
+      const { symbol, positionAmt, profitPercent, unrealizedProfit } =
+        await getPositionData(pos);
+
+      sendMessage(
+        `${symbol} - 
+포지션: ${positionAmt > 0 ? '롱' : '숏'}, 
+실현손익: ${parseFloat(unrealizedProfit).toFixed(2)}USDT
+손익률: ${profitPercent.toFixed(2)}%`
+      );
+    }
+  } catch (error) {
+    sendMessage(`sendPositionData 실행 중에 에러 발생 ${error.message}`);
   }
 };
 
@@ -157,7 +162,7 @@ const getPositionData = async (position) => {
     positionAmt,
     markPrice,
     profitPercent,
-    unrealizedProfit: position.unrealizedProfit,
+    unrealizedProfit: parseFloat(position.unrealizedProfit),
   };
 };
 
@@ -185,9 +190,9 @@ async function monitorPositions() {
       ) {
         await closePosition(symbol, positionAmt);
         sendMessage(
-          `${symbol} 포지션 청산 - 실현손익: ${unrealizedProfit.toFixed(
-            2
-          )}USDT 손익률: ${profitPercent.toFixed(2)}%`
+          `${symbol} 포지션 청산
+실현손익: ${unrealizedProfit.toFixed(2)}
+USDT 손익률: ${profitPercent.toFixed(2)}%`
         );
 
         // 손절시 coolDownTime 설정
@@ -257,9 +262,9 @@ async function trade(symbol, interval = '5m') {
 
         await closePosition(symbol, positionAmt);
         sendMessage(
-          `${symbol} 숏 포지션 청산 - 실현손익: ${unrealizedProfit.toFixed(
-            2
-          )}USDT 손익률: ${profitPercent.toFixed(2)}%`
+          `${symbol} 숏 포지션 청산
+실현손익: ${unrealizedProfit.toFixed(2)}USDT
+손익률: ${profitPercent.toFixed(2)}%`
         );
       }
       await openPosition(symbol, adjustedQuantity, 'LONG', lastClose);
@@ -285,9 +290,9 @@ async function trade(symbol, interval = '5m') {
           await getPositionData(positions[0]);
         await closePosition(symbol, positionAmt, currentPrice);
         sendMessage(
-          `${symbol} 롱 포지션 청산 - 실현손익: ${unrealizedProfit.toFixed(
-            2
-          )}USDT 손익률: ${profitPercent.toFixed(2)}%`
+          `${symbol} 롱 포지션 청산
+실현손익: ${unrealizedProfit.toFixed(2)}USDT
+손익률: ${profitPercent.toFixed(2)}%`
         );
       }
       await openPosition(symbol, adjustedQuantity, 'SHORT', lastClose);
@@ -300,7 +305,7 @@ async function trade(symbol, interval = '5m') {
     }
   } catch (error) {
     console.error('Trade execution start failed:', error);
-    sendMessage('선물 트레이딩 실패: ' + error.message);
+    sendMessage(`선물 트레이딩 실패: ${error.message}`);
   }
 }
 
