@@ -33,6 +33,8 @@ let stopPlusPercent = 15;
 let coolDownTime = 0;
 let coolDownMilliseconds = 0;
 
+let buyCheck = false;
+
 // 텔레그램 봇 설정
 function setTelegramBot(bot) {
   telegramBot = bot;
@@ -249,6 +251,14 @@ async function trade(symbol, interval = '5m') {
       (rsi < rsiBuyThreshold || lastClose < bb.lower) &&
       coolDownTime < new Date().getTime()
     ) {
+      if (!buyCheck) {
+        buyCheck = true;
+        coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
+        return;
+      } else {
+        buyCheck = false;
+      }
+
       sendMessage(
         `${symbol} -
 선물 RSI: ${rsi},
@@ -279,6 +289,14 @@ async function trade(symbol, interval = '5m') {
       (rsi > rsiSellThreshold || lastClose > bb.upper) &&
       coolDownTime < new Date().getTime()
     ) {
+      if (!buyCheck) {
+        buyCheck = true;
+        coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
+        return;
+      } else {
+        buyCheck = false;
+      }
+
       sendMessage(
         `${symbol} -
   선물 RSI: ${rsi},

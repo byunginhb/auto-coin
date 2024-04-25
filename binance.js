@@ -129,9 +129,6 @@ async function trade(symbol, interval = '5m') {
       buyUsdtAmount = trades[trades.length - 1].quoteQty;
     }
 
-    console.log(
-      `usdtBalance=${usdtBalance}, baseBalance=${baseBalance}, lastRSI=${lastRSI}, lastClose=${lastClose}, lastBB.lower=${lastBB.lower}, lastBB.upper=${lastBB.upper}`
-    );
     // 매수 조건 확인
     if (
       quantity > 0 &&
