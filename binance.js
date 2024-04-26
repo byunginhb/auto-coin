@@ -9,6 +9,14 @@ const binance = new Binance().options({
   family: 4,
 });
 
+// 숫자 소수점 자릿수 잘라내기
+function truncateNumber(strNum, digits) {
+  let num = Number(strNum);
+  let factor = Math.pow(10, digits);
+  num = Math.floor(num * factor) / factor;
+  return num;
+}
+
 async function adjustQuantity(symbol, quantity) {
   if (quantity === 0) return 0;
 
@@ -105,7 +113,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
-//trade('BTCUSDT', '5m');
+trade('BTCUSDT', '5m');
 
 async function trade(symbol, interval = '5m') {
   try {
@@ -191,7 +199,7 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
     const profitThreshold = buyUsdtAmount * (1 + stopPlusPercent / 100);
     const currentUSDTAmount = currentPrice * baseBalance;
 
-    const quantity = await adjustQuantity(symbol, baseBalance);
+    const quantity = truncateNumber(baseBalance, 4);
 
     // 손절 조건 확인
     if (currentUSDTAmount <= lossThreshold) {
