@@ -188,6 +188,9 @@ async function monitorPositions() {
         profitPercent <= stopLossPercent ||
         profitPercent >= stopPlusPercent
       ) {
+        buyCheck = false;
+        sellCheck = false;
+
         await closePosition(symbol, positionAmt);
         sendMessage(
           `${symbol} 포지션 청산
