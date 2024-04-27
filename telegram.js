@@ -11,6 +11,7 @@ bot.on('message', (msg) => {
   if (args[0] === '/시작') {
     const symbol = args[1];
     binance.startTrade(symbol, '5m');
+    binanceFutures.startTrade(symbol, '5m');
     bot.sendMessage(chatId, `자동 거래 시작`);
   } else if (args[0] === '/종료') {
     binance.endTrade();
