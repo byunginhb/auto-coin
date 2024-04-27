@@ -342,22 +342,22 @@ async function trade(symbol, interval = '5m') {
     );
 
     if (checkBuy) {
-      await openPosition(symbol, adjustedQuantity, 'LONG', lastClose);
+      await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
       sendMessage(`롱포지션 조건 충족.
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
 선물 RSI: ${rsi},
-마지막 금액: ${lastClose},
+마지막 금액: ${currentPrice},
 볼린저 하단: ${bb.lower.toFixed(3)},
 볼린저 상단: ${bb.upper.toFixed(3)}
 `);
     }
     // 매도 조건 확인
     else if (checkSell) {
-      await openPosition(symbol, adjustedQuantity, 'SHORT', lastClose);
+      await openPosition(symbol, adjustedQuantity, 'SHORT', currentPrice);
       sendMessage(`숏포지션 조건 충족. 
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행
 선물 RSI: ${rsi},
-마지막 금액: ${lastClose},
+마지막 금액: ${currentPrice},
 볼린저 하단: ${bb.lower.toFixed(3)},
 볼린저 상단: ${bb.upper.toFixed(3)}
 `);
