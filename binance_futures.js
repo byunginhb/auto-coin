@@ -60,6 +60,8 @@ async function fetchCandlestickData(symbol, interval, limit) {
 async function calculateIndicators(candles) {
   try {
     const closes = candles.map((c) => parseFloat(c[4]));
+    const highs = candles.map((c) => parseFloat(c[2]));
+    const lows = candles.map((c) => parseFloat(c[3]));
     const rsiValues = RSI.calculate({ period: 14, values: closes });
     const bbValues = BollingerBands.calculate({
       period: 20,
@@ -70,6 +72,8 @@ async function calculateIndicators(candles) {
       rsi: rsiValues[rsiValues.length - 1],
       bb: bbValues[bbValues.length - 1],
       lastClose: closes[closes.length - 1],
+      lastHigh: highs[closes.length - 1],
+      lastLow: lows[closes.length - 1],
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
@@ -224,7 +228,14 @@ const getAccountInfo = async () => {
 };
 
 //매수 체크 로직
-const getBuyCheck = async (rsi, lastClose, bb, positionAmt, position) => {
+const getBuyCheck = async (
+  rsi,
+  lastClose,
+  bb,
+  positionAmt,
+  position,
+  lastLow
+) => {
   if (positionAmt < 0 && (rsi < rsiBuyThreshold || lastClose < bb.lower)) {
     const { symbol, positionAmt, profitPercent, unrealizedProfit } =
       await getPositionData(position);
@@ -241,7 +252,12 @@ const getBuyCheck = async (rsi, lastClose, bb, positionAmt, position) => {
     return false;
   }
 
-  if (buyCheck && positionAmt <= 0 && lastClose > bb.lower) {
+  if (
+    buyCheck &&
+    positionAmt <= 0 &&
+    lastClose > bb.lower &&
+    lastLow > bb.lower
+  ) {
     buyCheck = false;
     return true;
   } else if (
@@ -261,7 +277,14 @@ const getBuyCheck = async (rsi, lastClose, bb, positionAmt, position) => {
 };
 
 //매도 체크 로직
-const getSellCheck = async (rsi, lastClose, bb, positionAmt, position) => {
+const getSellCheck = async (
+  rsi,
+  lastClose,
+  bb,
+  positionAmt,
+  position,
+  lastHigh
+) => {
   if (positionAmt > 0 && (rsi > rsiSellThreshold || lastClose > bb.upper)) {
     const { symbol, positionAmt, profitPercent, unrealizedProfit } =
       await getPositionData(position);
@@ -278,7 +301,12 @@ const getSellCheck = async (rsi, lastClose, bb, positionAmt, position) => {
     return false;
   }
 
-  if (sellCheck && positionAmt <= 0 && lastClose < bb.upper) {
+  if (
+    sellCheck &&
+    positionAmt <= 0 &&
+    lastClose < bb.upper &&
+    lastHigh < bb.upper
+  ) {
     sellCheck = false;
     return true;
   } else if (
@@ -297,7 +325,7 @@ const getSellCheck = async (rsi, lastClose, bb, positionAmt, position) => {
   return false;
 };
 
-//trade('BTCUSDT', '5m');
+trade('BTCUSDT', '5m');
 
 // 트레이딩 함수
 async function trade(symbol, interval = '5m') {
@@ -311,7 +339,9 @@ async function trade(symbol, interval = '5m') {
     await binance.futuresLeverage(symbol, setLeverage);
 
     const candles = await fetchCandlestickData(symbol, interval, 500);
-    const { rsi, bb, lastClose } = await calculateIndicators(candles);
+    const { rsi, bb, lastClose, lastHigh, lastLow } = await calculateIndicators(
+      candles
+    );
     const { positions, usdtBalance } = await getAccountInfo();
     const currentPrice = await getCurrentPrice(symbol);
 
@@ -331,14 +361,16 @@ async function trade(symbol, interval = '5m') {
       lastClose,
       bb,
       positionAmt,
-      positions[0]
+      positions[0],
+      lastLow
     );
     const checkSell = await getSellCheck(
       rsi,
       lastClose,
       bb,
       positionAmt,
-      positions[0]
+      positions[0],
+      lastHigh
     );
 
     if (checkBuy) {

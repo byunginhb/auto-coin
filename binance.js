@@ -176,7 +176,8 @@ ${usdtBalance}USDT 수량으로 ${symbol} ${buyPrice}가격으로 ${quantity}개
 RSI : ${lastRSI},
 Close : ${lastClose},
 BB.lower : ${lastBB.lower},
-BB.upper : ${lastBB.upper}
+BB.upper : ${lastBB.upper},
+산가격 : ${buyPrice}, 판가격: ${currentPrice}
 ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
       );
     } else {
