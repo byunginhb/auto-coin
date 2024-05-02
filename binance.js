@@ -167,10 +167,6 @@ ${usdtBalance}USDT 수량으로 ${symbol} ${buyPrice}가격으로 ${quantity}개
       const orderResult = await binance.marketSell(symbol, adjustBalance);
       console.log(orderResult);
 
-      position = 'none';
-      buyPrice = 0;
-      buyUsdtAmount = 0;
-
       sendMessage(
         `매도 조건 충족. 
 RSI : ${lastRSI},
@@ -180,6 +176,10 @@ BB.upper : ${lastBB.upper},
 산가격 : ${buyPrice}, 판가격: ${currentPrice}
 ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
       );
+
+      position = 'none';
+      buyPrice = 0;
+      buyUsdtAmount = 0;
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
     }
