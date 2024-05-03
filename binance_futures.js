@@ -19,8 +19,8 @@ let monitorIntervalHandler = null;
 
 let telegramBot = null;
 let leverage = 1;
-let stopLossPercent = -15;
-let stopPlusPercent = 15;
+let stopLossPercent = -10;
+let stopPlusPercent = 10;
 
 let coolDownTime = 0;
 let coolDownMilliseconds = 0;
