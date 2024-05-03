@@ -180,6 +180,8 @@ ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
       position = 'none';
       buyPrice = 0;
       buyUsdtAmount = 0;
+
+      getBalance(symbol);
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
     }
@@ -316,21 +318,12 @@ const getBalance = async (symbol = 'BTCUSDT') => {
       const currentPrices = await binance.prices();
       const currentPrice = parseFloat(currentPrices[symbol]);
 
-      if (currentPrice <= buyPrice) {
-        sendMessage(
-          `현재 손해 USDT: ${
-            (currentPrice - buyPrice) * baseBalance
-          }, 손해율 : ${((currentPrice - buyPrice) / buyPrice) * 100}%
-          `
-        );
-      } else if (currentPrice >= buyPrice) {
-        sendMessage(
-          `현재 수익 USDT: ${
-            (currentPrice - buyPrice) * baseBalance
-          }, 수익율 : ${((currentPrice - buyPrice) / buyPrice) * 100}%
-          `
-        );
-      }
+      sendMessage(
+        `${currentPrice <= buyPrice ? '손해' : '수익'} 
+USDT ${((currentPrice - buyPrice) * baseBalance).toFixed(2)}, 
+${currentPrice <= buyPrice ? '손실률' : '수익률'}
+${(((currentPrice - buyPrice) / buyPrice) * 100).toFixed(2)}%`
+      );
     }
   } catch (error) {
     console.error('Balance check failed:', error);
