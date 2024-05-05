@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const bot = require('./telegram').bot;
+const futureBot = require('./telegram').futureBot;
 const binance = require('./binance').binance;
 const binanceFutures = require('./binance_futures').binance;
 const backTest = require('./backtest').backTest;
@@ -61,5 +62,5 @@ app.get('/trade/end', (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
   binance.setTelegramBot(bot);
-  binanceFutures.setTelegramBot(bot);
+  binanceFutures.setTelegramBot(futureBot);
 });

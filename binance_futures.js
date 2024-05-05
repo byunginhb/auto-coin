@@ -1,7 +1,7 @@
 require('dotenv').config();
 const Binance = require('node-binance-api');
 const { BollingerBands, RSI } = require('technicalindicators');
-const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
+const chatId = process.env.TELEGRAM_FUTURE_BOT_CHAT_ID;
 
 // 바이낸스 API 객체 생성
 const binance = new Binance().options({
@@ -325,7 +325,7 @@ const getSellCheck = async (
   return false;
 };
 
-trade('BTCUSDT', '5m');
+//trade('BTCUSDT', '5m');
 
 // 트레이딩 함수
 async function trade(symbol, interval = '5m') {
@@ -403,7 +403,7 @@ ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행
 }
 
 // 트레이딩 시작
-async function startTrade(symbol, interval = '5m') {
+async function startTrade(symbol = 'BTCUSDT', interval = '5m') {
   try {
     if (intervalHandler !== null) {
       clearInterval(intervalHandler);

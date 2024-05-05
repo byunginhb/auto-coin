@@ -216,6 +216,7 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       `
       );
       position = 'none'; // 포지션 초기화
+      getBalance(symbol);
     }
     // 수익 실현 조건 확인
     else if (currentUSDTAmount >= profitThreshold) {
@@ -228,12 +229,11 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       `
       );
       position = 'none'; // 포지션 초기화
+      getBalance(symbol);
     }
   } catch (error) {
     console.error('Stop loss check failed:', error);
-    sendMessage(
-      `손절 및 수익 실현 체크 중 오류가 발생했습니다. ${error.message}`
-    );
+    sendMessage(`손절 및 수익 실현 체크 중 오류가 발생했습니다. ${error.code}`);
   }
 };
 
