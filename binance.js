@@ -134,7 +134,7 @@ async function trade(symbol, interval = '5m') {
       //구매한 가격을 가져와서 buyPrice에 저장
       const trades = await binance.trades(symbol);
       buyPrice = parseFloat(trades[trades.length - 1].price);
-      buyUsdtAmount = trades[trades.length - 1].quoteQty;
+      buyUsdtAmount = parseFloat(trades[trades.length - 1].quoteQty);
     }
 
     // 매수 조건 확인
@@ -147,7 +147,7 @@ async function trade(symbol, interval = '5m') {
 
       position = 'buy';
       buyPrice = orderResult?.fills[0]?.price;
-      buyUsdtAmount = usdtBalance;
+      buyUsdtAmount = parseFloat(usdtBalance);
 
       sendMessage(
         `매수 조건 충족. 
@@ -210,9 +210,10 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       await binance.marketSell(symbol, quantity);
       sendMessage(
         `손절 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
-      손해 USDT: ${currentUSDTAmount - buyUsdtAmount}, 손해율 : ${
-          ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) * 100
-        }%
+      손해 USDT: ${(currentUSDTAmount - buyUsdtAmount).toFixed(2)}, 손해율 : ${(
+          ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) *
+          100
+        ).toFixed(2)}%
       `
       );
       position = 'none'; // 포지션 초기화
@@ -223,9 +224,10 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       await binance.marketSell(symbol, quantity);
       sendMessage(
         `수익 실현 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
-      수익 USDT: ${currentUSDTAmount - buyUsdtAmount}, 수익율 : ${
-          ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) * 100
-        }%
+      수익 USDT: ${(currentUSDTAmount - buyUsdtAmount).toFixed(2)}, 수익율 : ${(
+          ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) *
+          100
+        ).toFixed(2)}%
       `
       );
       position = 'none'; // 포지션 초기화
@@ -233,7 +235,7 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
     }
   } catch (error) {
     console.error('Stop loss check failed:', error);
-    sendMessage(`손절 및 수익 실현 체크 중 오류가 발생했습니다. ${error.code}`);
+    sendMessage(`손절 및 수익 실현 체크 중 오류가 발생했습니다. ${error}`);
   }
 };
 
@@ -275,8 +277,8 @@ async function startTrade(symbol = 'BTCUSDT', interval = '5m') {
 
     trade(symbol, interval);
 
-    // 1분마다 trade 함수 실행
-    intervalHandler = setInterval(() => trade(symbol, interval), 60 * 1000);
+    // 15초마다 trade 함수 실행
+    intervalHandler = setInterval(() => trade(symbol, interval), 15 * 1000);
     console.log('트레이딩을 실행합니다.');
   } catch (error) {
     console.error('Trade execution start failed:', error);
