@@ -235,7 +235,9 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
     }
   } catch (error) {
     console.error('Stop loss check failed:', error);
-    sendMessage(`손절 및 수익 실현 체크 중 오류가 발생했습니다. ${error}`);
+    sendMessage(
+      `손절 및 수익 실현 체크 중 오류가 발생했습니다. ${JSON.stringify(error)}`
+    );
   }
 };
 
