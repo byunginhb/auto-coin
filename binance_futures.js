@@ -19,8 +19,8 @@ let monitorIntervalHandler = null;
 
 let telegramBot = null;
 let leverage = 1;
-let stopLossPercent = -10;
-let stopPlusPercent = 10;
+let stopLossUSDT = -20;
+let stopPlusUSDT = 20;
 
 let coolDownTime = 0;
 let coolDownMilliseconds = 0;
@@ -189,8 +189,8 @@ async function monitorPositions() {
 
       // 손절 및 익절 로직
       if (
-        profitPercent <= stopLossPercent ||
-        profitPercent >= stopPlusPercent
+        unrealizedProfit <= stopLossUSDT ||
+        unrealizedProfit >= stopPlusUSDT
       ) {
         buyCheck = false;
         sellCheck = false;
@@ -198,12 +198,11 @@ async function monitorPositions() {
         await closePosition(symbol, positionAmt);
         sendMessage(
           `${symbol} 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT
-손익률: ${profitPercent.toFixed(2)}%`
+실현손익: ${unrealizedProfit.toFixed(2)}USDT`
         );
 
         // 손절시 coolDownTime 설정
-        if (profitPercent <= stopLossPercent) {
+        if (profitPercent <= stopLossUSDT) {
           coolDownTime = new Date().getTime() + coolDownMilliseconds;
         }
       }
