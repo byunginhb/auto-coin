@@ -139,7 +139,7 @@ async function trade(symbol, interval = '5m') {
 
     // 매수 조건 확인
     if (
-      quantity > 0 &&
+      quantity > 0.001 &&
       (lastRSI <= rsiBuyThreshold || lastClose <= lastBB.lower)
     ) {
       const orderResult = await binance.marketBuy(symbol, quantity);
