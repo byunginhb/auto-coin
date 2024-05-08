@@ -137,6 +137,11 @@ async function trade(symbol, interval = '5m') {
       buyUsdtAmount = parseFloat(trades[trades.length - 1].quoteQty);
     }
 
+    // 손절 조건 확인
+    if (position === 'buy' && buyUsdtAmount > 0) {
+      checkStopLoss(symbol, parseFloat(currentPrice), parseFloat(baseBalance));
+    }
+
     // 매수 조건 확인
     if (
       quantity > 0.001 &&
@@ -185,11 +190,6 @@ ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
     }
-
-    // 손절 조건 확인
-    if (position === 'buy' && buyUsdtAmount > 0) {
-      checkStopLoss(symbol, parseFloat(currentPrice), parseFloat(baseBalance));
-    }
   } catch (error) {
     console.error('Trade execution failed:', error);
     sendMessage('트레이딩 실행 중 오류가 발생했습니다.', error);
@@ -236,7 +236,9 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
   } catch (error) {
     console.error('Stop loss check failed:', error);
     sendMessage(
-      `손절 및 수익 실현 체크 중 오류가 발생했습니다. ${JSON.stringify(error)}`
+      `손절 및 수익 실현 체크 중 오류가 발생했습니다. 
+${error.body.code}, 
+${error.body.msg}`
     );
   }
 };
