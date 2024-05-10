@@ -187,11 +187,8 @@ async function monitorPositions() {
       const { symbol, positionAmt, profitPercent, unrealizedProfit } =
         await getPositionData(pos);
 
-      // 손절 및 익절 로직
-      if (
-        unrealizedProfit <= stopLossUSDT ||
-        unrealizedProfit >= stopPlusUSDT
-      ) {
+      // 손절 로직
+      if (unrealizedProfit <= stopLossUSDT) {
         buyCheck = false;
         sellCheck = false;
 

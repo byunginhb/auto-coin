@@ -113,7 +113,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
-//trade('BTCUSDT', '5m');
+trade('BTCUSDT', '5m');
 
 async function trade(symbol, interval = '5m') {
   try {
@@ -129,7 +129,7 @@ async function trade(symbol, interval = '5m') {
       console.error('Failed to get trade data:', error);
     });
 
-    if (baseBalance > 0.00001) {
+    if (baseBalance > 0.0001) {
       position = 'buy';
       //구매한 가격을 가져와서 buyPrice에 저장
       const trades = await binance.trades(symbol);
@@ -217,6 +217,7 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       `
       );
       position = 'none'; // 포지션 초기화
+      buyUsdtAmount = 0;
       getBalance(symbol);
     }
     // 수익 실현 조건 확인
@@ -231,15 +232,23 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       `
       );
       position = 'none'; // 포지션 초기화
+      buyUsdtAmount = 0;
       getBalance(symbol);
     }
   } catch (error) {
     console.error('Stop loss check failed:', error);
-    sendMessage(
-      `손절 및 수익 실현 체크 중 오류가 발생했습니다. 
+    if (error?.body?.code) {
+      sendMessage(
+        `손절 및 수익 실현 체크 중 오류가 발생했습니다. 
 ${error.body.code}, 
 ${error.body.msg}`
-    );
+      );
+    } else {
+      sendMessage(
+        `손절 및 수익 실현 체크 중 오류가 발생했습니다. 
+${JSON.stringify(error)}`
+      );
+    }
   }
 };
 
