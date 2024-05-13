@@ -67,7 +67,7 @@ function setTelegramBot(bot) {
   telegramBot = bot;
 }
 
-const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
+const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
   // 마지막 500개의 캔들 데이터를 가져옵니다.
   const candles = await binance.futuresCandles(symbol, interval, {
     limit: 500,
@@ -113,9 +113,9 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
   };
 };
 
-trade('BTCUSDT', '5m');
+//trade('BTCUSDT', '15m');
 
-async function trade(symbol, interval = '5m') {
+async function trade(symbol, interval = '15m') {
   try {
     const {
       usdtBalance,
@@ -145,7 +145,8 @@ async function trade(symbol, interval = '5m') {
     // 매수 조건 확인
     if (
       quantity > 0.001 &&
-      (lastRSI <= rsiBuyThreshold || lastClose <= lastBB.lower)
+      lastRSI <= rsiBuyThreshold &&
+      lastClose <= lastBB.lower
     ) {
       const orderResult = await binance.marketBuy(symbol, quantity);
       console.log(orderResult);
@@ -166,7 +167,8 @@ ${usdtBalance}USDT 수량으로 ${symbol} ${buyPrice}가격으로 ${quantity}개
     // 매도 조건 확인
     else if (
       baseBalance > 0.00001 &&
-      (lastRSI >= rsiSellThreshold || lastClose >= lastBB.upper)
+      lastRSI >= rsiSellThreshold &&
+      lastClose >= lastBB.upper
     ) {
       const adjustBalance = await adjustQuantity(symbol, baseBalance);
       const orderResult = await binance.marketSell(symbol, adjustBalance);
@@ -252,7 +254,7 @@ ${JSON.stringify(error)}`
   }
 };
 
-const sendTradeData = async (symbol = 'BTCUSDT', interval = '5m') => {
+const sendTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
   try {
     const {
       usdtBalance,
@@ -280,7 +282,7 @@ Quantity: ${quantity}`
   }
 };
 
-async function startTrade(symbol = 'BTCUSDT', interval = '5m') {
+async function startTrade(symbol = 'BTCUSDT', interval = '15m') {
   try {
     if (intervalHandler !== null) {
       clearInterval(intervalHandler);
