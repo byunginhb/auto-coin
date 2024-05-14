@@ -145,10 +145,9 @@ const sendPositionData = async () => {
         await getPositionData(pos);
 
       sendMessage(
-        `${symbol} - 
+        `${symbol} 포지션 정보
 포지션: ${positionAmt > 0 ? '롱' : '숏'}, 
-실현손익: ${parseFloat(unrealizedProfit).toFixed(2)}USDT
-손익률: ${profitPercent.toFixed(2)}%`
+실현손익: ${parseFloat(unrealizedProfit).toFixed(2)}USDT`
       );
     }
   } catch (error) {
