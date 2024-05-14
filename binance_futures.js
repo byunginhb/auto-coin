@@ -451,4 +451,5 @@ exports.binance = {
   setTelegramBot,
   monitorPositions,
   sendPositionData,
+  sendUSDTBalance,
 };

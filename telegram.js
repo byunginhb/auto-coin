@@ -12,12 +12,11 @@ bot.on('message', (msg) => {
   const args = msg.text.split(' ');
   if (args[0] === '/시작') {
     const symbol = args[1];
-    binance.startTrade(symbol, '15m');
+    const interval = args[2];
+    binance.startTrade(symbol, interval);
     bot.sendMessage(chatId, `자동 거래 시작`);
   } else if (args[0] === '/종료') {
     binance.endTrade();
-    bot.sendMessage(chatId, `자동 거래 종료`);
-  } else if (args[0] === '/선물종료') {
     bot.sendMessage(chatId, `자동 거래 종료`);
   } else if (args[0] === '/잔액') {
     const symbol = args[1];
@@ -35,19 +34,16 @@ futureBot.on('message', (msg) => {
   const args = msg.text.split(' ');
   if (args[0] === '/시작') {
     const symbol = args[1];
-    binanceFutures.startTrade(symbol, '15m');
+    const interval = args[2];
+    binanceFutures.startTrade(symbol, interval);
     futureBot.sendMessage(chatId, `자동 거래 시작`);
   } else if (args[0] === '/종료') {
-    futureBot.sendMessage(chatId, `자동 거래 종료`);
-  } else if (args[0] === '/선물') {
-    const symbol = args[1];
-    binanceFutures.startTrade(symbol, '15m');
-    futureBot.sendMessage(chatId, `자동 거래 시작`);
-  } else if (args[0] === '/선물종료') {
     binanceFutures.endTrade();
     futureBot.sendMessage(chatId, `자동 거래 종료`);
   } else if (args[0] === '/체크') {
     binanceFutures.sendPositionData();
+  } else if (args[0] === '/잔액') {
+    binanceFutures.sendUSDTBalance();
   } else {
     futureBot.sendMessage(chatId, `Received your message ${msg.text}`);
   }

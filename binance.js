@@ -67,6 +67,7 @@ function setTelegramBot(bot) {
   telegramBot = bot;
 }
 
+// 거래 데이터 가져오기
 const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
   // 마지막 500개의 캔들 데이터를 가져옵니다.
   const candles = await binance.futuresCandles(symbol, interval, {
@@ -115,6 +116,7 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
 
 //trade('BTCUSDT', '15m');
 
+// 트레이밍 함수
 async function trade(symbol, interval = '15m') {
   try {
     const {
@@ -198,6 +200,7 @@ ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
   }
 }
 
+//손절, 손익 체크
 const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
   try {
     const lossThreshold = buyUsdtAmount * (1 + stopLossPercent / 100);
@@ -254,6 +257,7 @@ ${JSON.stringify(error)}`
   }
 };
 
+// 현재 지표 데이터 전송
 const sendTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
   try {
     const {
@@ -282,6 +286,7 @@ Quantity: ${quantity}`
   }
 };
 
+//트레이딩 시작
 async function startTrade(symbol = 'BTCUSDT', interval = '15m') {
   try {
     if (intervalHandler !== null) {
@@ -300,6 +305,7 @@ async function startTrade(symbol = 'BTCUSDT', interval = '15m') {
   }
 }
 
+//트레이딩 종료
 async function endTrade() {
   try {
     if (intervalHandler !== null) {
@@ -312,6 +318,7 @@ async function endTrade() {
   }
 }
 
+//현재 계좌 상태 전송
 const getBalance = async (symbol = 'BTCUSDT') => {
   try {
     const baseSysmbol = symbol.replace('USDT', '');
