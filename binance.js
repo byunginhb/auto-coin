@@ -421,8 +421,6 @@ const sendUSDTBalance = async () => {
   }
 };
 
-sendUSDTBalance();
-
 exports.binance = {
   startTrade,
   endTrade,
