@@ -8,6 +8,16 @@ const backTest = require('./backtest').backTest;
 const app = express();
 const port = process.env.PORT || 3000;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
+const cron = require('node-cron');
+
+cron.schedule('5 0 * * *', async () => {
+  try {
+    binance.sendUSDTBalance();
+    console.log('API 호출 성공:', response.data);
+  } catch (error) {
+    console.error('API 호출 실패:', error);
+  }
+});
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
