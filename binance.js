@@ -207,7 +207,9 @@ ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
     }
   } catch (error) {
     console.error('Trade execution failed:', error);
-    sendMessage('트레이딩 실행 중 오류가 발생했습니다.', error);
+    sendMessage(
+      `트레이딩 실행 중 오류가 발생했습니다. ${JSON.stringify(error)}`
+    );
   }
 }
 
