@@ -47,7 +47,7 @@ async function adjustQuantity(symbol, quantity) {
 }
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 40; // RSI 과매도 조건
+const rsiBuyThreshold = 35; // RSI 과매도 조건
 const rsiSellThreshold = 65; // RSI 과매수 조건
 
 // 손절, 손익 조건
@@ -75,6 +75,8 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
     limit: 500,
   });
   const closes = candles.map((c) => parseFloat(c[4]));
+  const lows = candles.map((c) => parseFloat(c[3]));
+  const highs = candles.map((c) => parseFloat(c[2]));
   const baseAsset = symbol.replace('USDT', '');
 
   // RSI 및 볼린저 밴드 지표 계산
@@ -85,6 +87,8 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
     values: closes,
   });
   const lastClose = closes[closes.length - 1];
+  const lastLow = lows[lows.length - 1];
+  const lastHigh = highs[highs.length - 1];
   const lastRSI = rsiValues[rsiValues.length - 1];
   const lastBB = bbValues[bbValues.length - 1];
 
@@ -109,6 +113,8 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
     baseBalance: parseFloat(baseBalance),
     lastRSI,
     lastClose,
+    lastHigh,
+    lastLow,
     lastBB,
     currentPrice,
     quantity,
@@ -125,6 +131,8 @@ async function trade(symbol, interval = '15m') {
       baseBalance,
       lastRSI,
       lastClose,
+      lastHigh,
+      lastLow,
       lastBB,
       currentPrice,
       quantity,
@@ -149,7 +157,8 @@ async function trade(symbol, interval = '15m') {
     if (
       quantity > 0.001 &&
       lastRSI <= rsiBuyThreshold &&
-      lastClose <= lastBB.lower
+      lastClose <= lastBB.lower &&
+      lastLow <= lastBB.lower
     ) {
       const orderResult = await binance.marketBuy(symbol, quantity);
       console.log(orderResult);
@@ -171,7 +180,8 @@ ${usdtBalance}USDT 수량으로 ${symbol} ${buyPrice}가격으로 ${quantity}개
     else if (
       baseBalance > 0.00001 &&
       lastRSI >= rsiSellThreshold &&
-      lastClose >= lastBB.upper
+      lastClose >= lastBB.upper &&
+      lastHigh >= lastBB.upper
     ) {
       const adjustBalance = await adjustQuantity(symbol, baseBalance);
       const orderResult = await binance.marketSell(symbol, adjustBalance);
