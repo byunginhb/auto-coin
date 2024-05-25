@@ -147,7 +147,7 @@ const getSellCheck = async (rsi, lastClose, bb, lastHigh) => {
   return false;
 };
 
-trade('BTCUSDT', '15m');
+//trade('BTCUSDT', '15m');
 
 // 트레이밍 함수
 async function trade(symbol, interval = '15m') {
