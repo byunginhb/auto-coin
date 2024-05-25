@@ -329,7 +329,7 @@ async function trade(symbol, interval = '15m') {
       await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
       sendMessage(`롱포지션 조건 충족.
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
-선물 RSI: ${rsi},
+선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
 볼린저 하단: ${bb.lower.toFixed(3)},
 볼린저 상단: ${bb.upper.toFixed(3)}
@@ -340,7 +340,7 @@ ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
       await openPosition(symbol, adjustedQuantity, 'SHORT', currentPrice);
       sendMessage(`숏포지션 조건 충족. 
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행
-선물 RSI: ${rsi},
+선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
 볼린저 하단: ${bb.lower.toFixed(3)},
 볼린저 상단: ${bb.upper.toFixed(3)}
