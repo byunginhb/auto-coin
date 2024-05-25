@@ -1,5 +1,5 @@
 const Binance = require('node-binance-api');
-const { RSI } = require('technicalindicators');
+const { RSI, BollingerBands } = require('technicalindicators');
 
 const binance = new Binance().options({
   APIKEY: process.env.BINANCE_API_KEY,
@@ -7,86 +7,192 @@ const binance = new Binance().options({
   family: 4,
 });
 
-async function fetchCandlestickData(symbol, interval, limit) {
-  return binance.futuresCandles(symbol, interval, { limit });
-}
+let buyCheck = false;
+let sellCheck = false;
 
-async function backTest(
-  symbol,
-  interval,
-  rsiBuyThreshold,
-  rsiSellThreshold,
-  stopLossPercent,
-  stopPlusPercent,
-  leverage
-) {
-  const limit = 1500;
-  let tradeCount = 0;
-  let plusCount = 0;
-  let cumulativeProfit = 0;
-  let positionOpen = false;
-  let entryPrice = 0;
+let symbol = 'BTCUSDT';
+let rsiBuyThreshold = 33;
+let rsiSellThreshold = 60;
+let stopLossPercent = -3;
+let stopPlusPercent = 45;
+let interval = '15m';
 
-  const candles = await fetchCandlestickData(symbol, interval, limit);
-  const closes = candles.map((c) => parseFloat(c[4]));
-  const rsiValues = RSI.calculate({ period: 14, values: closes });
+// backTest();
 
-  for (let i = 14; i < closes.length; i++) {
-    const currentPrice = closes[i];
-    const rsi = rsiValues[i - 14]; // RSI 배열은 closes 배열보다 14개 작음
+async function backTest() {
+  try {
+    const candles = await binance.futuresCandles(symbol, interval, {
+      limit: 1500,
+    });
+    const closes = candles.map((c) => parseFloat(c[4]));
+    const highs = candles.map((c) => parseFloat(c[2]));
+    const lows = candles.map((c) => parseFloat(c[3]));
+    const rsiValues = RSI.calculate({ period: 14, values: closes });
+    const bbValues = BollingerBands.calculate({
+      period: 20,
+      stdDev: 2,
+      values: closes,
+    });
 
-    if (!positionOpen && rsi < rsiBuyThreshold) {
-      entryPrice = currentPrice;
-      positionOpen = true;
-    } else if (positionOpen && rsi > rsiSellThreshold) {
-      let profit = ((currentPrice - entryPrice) / entryPrice) * 100 * leverage;
-      cumulativeProfit += profit;
-      positionOpen = false;
-      tradeCount++;
-    } else if (positionOpen) {
-      let profitPercent =
-        ((currentPrice - entryPrice) / entryPrice) * 100 * leverage;
-      if (
-        profitPercent <= stopLossPercent ||
-        profitPercent >= stopPlusPercent
-      ) {
-        if (profitPercent > 0) {
-          plusCount++;
+    let tradeCount = 0;
+    let totalProfitLoss = 0;
+    let position = null;
+    let buyPrice = 0;
+    let buyAmount = 0;
+    let coolDownIndex = -1;
+    const coolDownPeriod = 2; // 2개 캔들 뛰어넘기 위해
+
+    for (let i = 20; i < closes.length; i++) {
+      const lastClose = closes[i];
+      const lastHigh = highs[i];
+      const lastLow = lows[i];
+      const lastRSI = rsiValues[i - 14];
+      const lastBB = bbValues[i - 20];
+
+      if (position === 'buy') {
+        const currentProfitLoss = (lastClose - buyPrice) * buyAmount;
+        const lossThreshold = 1000 * (1 + stopLossPercent / 100);
+        const profitThreshold = 1000 * (1 + stopPlusPercent / 100);
+        const currentUSDTAmount = lastClose * buyAmount;
+        const profitLossPercent = (currentProfitLoss / 1000) * 100;
+
+        if (currentProfitLoss <= lossThreshold) {
+          totalProfitLoss += currentProfitLoss;
+          position = null;
+          console.log(
+            `손절: 산가격 ${buyPrice.toFixed(2)}, 판가격 ${lastClose.toFixed(
+              2
+            )}, 손익 ${currentProfitLoss.toFixed(
+              2
+            )} USDT, 수익률 ${profitLossPercent.toFixed(2)}%`
+          );
+          coolDownIndex = i + coolDownPeriod;
+        } else if (currentProfitLoss >= profitThreshold) {
+          totalProfitLoss += currentProfitLoss;
+          position = null;
+          console.log(
+            `익절: 산가격 ${buyPrice.toFixed(2)}, 판가격 ${lastClose.toFixed(
+              2
+            )}, 손익 ${currentProfitLoss.toFixed(
+              2
+            )} USDT, 수익률 ${profitLossPercent.toFixed(2)}%`
+          );
+          coolDownIndex = i + coolDownPeriod;
         }
+      }
 
-        cumulativeProfit += profitPercent;
-        positionOpen = false;
+      if (
+        position === null &&
+        (await getBuyCheck(
+          lastRSI,
+          lastClose,
+          lastBB,
+          lastLow,
+          i,
+          coolDownIndex,
+          coolDownPeriod
+        ))
+      ) {
+        position = 'buy';
+        buyPrice = lastClose;
+        buyAmount = 1000 / buyPrice; // 예를 들어 1000 USDT로 구매한다고 가정
         tradeCount++;
+        console.log(
+          `매수: 가격 ${buyPrice.toFixed(2)}, 수량 ${buyAmount.toFixed(2)}`
+        );
+        coolDownIndex = i + coolDownPeriod;
+      } else if (
+        position === 'buy' &&
+        (await getSellCheck(
+          lastRSI,
+          lastClose,
+          lastBB,
+          lastHigh,
+          i,
+          coolDownIndex,
+          coolDownPeriod
+        ))
+      ) {
+        const currentProfitLoss = (lastClose - buyPrice) * buyAmount;
+        totalProfitLoss += currentProfitLoss;
+        const profitLossPercent = (currentProfitLoss / 1000) * 100;
+        position = null;
+        console.log(
+          `매도: 산가격 ${buyPrice.toFixed(2)}, 판가격 ${lastClose.toFixed(
+            2
+          )}, 손익 ${currentProfitLoss.toFixed(
+            2
+          )} USDT, 수익률 ${profitLossPercent.toFixed(2)}%`
+        );
+        coolDownIndex = i + coolDownPeriod;
       }
     }
-  }
 
-  console.log(
-    `거래 횟수: ${tradeCount}, 수익 횟수: ${plusCount} 누적 손익: ${cumulativeProfit.toFixed(
-      2
-    )}%`
-  );
-  return { tradeCount, plusCount, cumulativeProfit };
+    const totalProfitLossPercent = (totalProfitLoss / 1000) * 100;
+    console.log(`거래 횟수: ${tradeCount}`);
+    console.log(`누적 손익 USDT 금액: ${totalProfitLoss.toFixed(2)} USDT`);
+    console.log(`손익률: ${totalProfitLossPercent.toFixed(2)}%`);
+  } catch (error) {
+    console.error('백테스트 실행 중 오류가 발생했습니다:', error);
+  }
 }
 
-const startBackTest = async () => {
-  const backTestBoundary = 20;
-  const top3 = [];
-
-  for (let i = 5; i < backTestBoundary; i++) {
-    for (let j = 5; j < backTestBoundary; j++) {
-      const result = await backTest('BTCUSDT', '15m', 30, 70, -i, j, 20);
-      top3.push({ ...result, stopLossPercent: j, stopPlusPercent: i });
-      console.log(result);
-    }
+async function getBuyCheck(
+  rsi,
+  lastClose,
+  bb,
+  lastLow,
+  currentIndex,
+  coolDownIndex,
+  coolDownPeriod
+) {
+  if (coolDownIndex > currentIndex) {
+    return false;
   }
 
-  top3.sort((a, b) => b.cumulativeProfit - a.cumulativeProfit);
-  console.log(top3.slice(0, 3));
-};
+  if (buyCheck && lastClose > bb.lower && lastLow > bb.lower) {
+    buyCheck = false;
+    return true;
+  } else if (rsi < rsiBuyThreshold && lastClose < bb.lower) {
+    if (!buyCheck) {
+      buyCheck = true;
+      coolDownIndex = currentIndex + coolDownPeriod;
+      return false;
+    } else {
+      buyCheck = false;
+    }
+    return true;
+  }
+  return false;
+}
 
-//startBackTest();
+async function getSellCheck(
+  rsi,
+  lastClose,
+  bb,
+  lastHigh,
+  currentIndex,
+  coolDownIndex,
+  coolDownPeriod
+) {
+  if (coolDownIndex > currentIndex) {
+    return false;
+  }
 
-//backTest('BTCUSDT', '15m', 30, 70, -5, 17, 20);
+  if (sellCheck && lastClose < bb.upper && lastHigh < bb.upper) {
+    sellCheck = false;
+    return true;
+  } else if (rsi > rsiSellThreshold && lastClose > bb.upper) {
+    if (!sellCheck) {
+      sellCheck = true;
+      coolDownIndex = currentIndex + coolDownPeriod;
+      return false;
+    } else {
+      sellCheck = false;
+    }
+    return true;
+  }
+  return false;
+}
 
 exports.backTest = backTest;

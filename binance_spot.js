@@ -11,8 +11,8 @@ const binance = new Binance().options({
 });
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 35; // RSI 과매도 조건
-const rsiSellThreshold = 65; // RSI 과매수 조건
+const rsiBuyThreshold = 33; // RSI 과매도 조건
+const rsiSellThreshold = 60; // RSI 과매수 조건
 
 // 손절, 손익 조건
 const stopLossPercent = -5; // 손절 조건
@@ -134,7 +134,7 @@ const getSellCheck = async (rsi, lastClose, bb, lastHigh) => {
   if (sellCheck && lastClose < bb.upper && lastHigh < bb.upper) {
     sellCheck = false;
     return true;
-  } else if (rsi < rsiBuyThreshold && lastClose < bb.lower) {
+  } else if (rsi > rsiSellThreshold && lastClose > bb.upper) {
     if (!sellCheck) {
       sellCheck = true;
       coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
