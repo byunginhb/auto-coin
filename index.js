@@ -2,9 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const bot = require('./telegram').bot;
 const futureBot = require('./telegram').futureBot;
-const binance = require('./binance').binance;
+const binance = require('./binance_spot').binance;
 const binanceFutures = require('./binance_futures').binance;
-const backTest = require('./backtest').backTest;
+const { sendUSDTBalance } = require('./binance_common');
 const app = express();
 const port = process.env.PORT || 3000;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
@@ -12,7 +12,7 @@ const cron = require('node-cron');
 
 cron.schedule('5 0 * * *', async () => {
   try {
-    binance.sendUSDTBalance();
+    sendUSDTBalance(binance.binance, true);
     console.log('API 호출 성공:', response.data);
   } catch (error) {
     console.error('API 호출 실패:', error);

@@ -1,7 +1,7 @@
 require('dotenv').config();
 const Binance = require('node-binance-api');
-const { BollingerBands, RSI } = require('technicalindicators');
-const axios = require('axios');
+const { truncateNumber } = require('./utils');
+const { fetchCandlestickData } = require('./binance_common').binance_common;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
 
 const binance = new Binance().options({
@@ -10,12 +10,33 @@ const binance = new Binance().options({
   family: 4,
 });
 
-// 숫자 소수점 자릿수 잘라내기
-function truncateNumber(strNum, digits) {
-  let num = Number(strNum);
-  let factor = Math.pow(10, digits);
-  num = Math.floor(num * factor) / factor;
-  return num;
+// 매수 및 매도 조건 설정
+const rsiBuyThreshold = 35; // RSI 과매도 조건
+const rsiSellThreshold = 65; // RSI 과매수 조건
+
+// 손절, 손익 조건
+const stopLossPercent = -5; // 손절 조건
+const stopPlusPercent = 45; // 손익 조건
+
+let intervalHandler = null;
+let telegramBot = null;
+
+let buyPrice = null;
+let position = null; // 포지션 상태 변경
+let buyUsdtAmount = 0;
+
+let coolDownTime = 0;
+let coolDownMilliseconds = 0;
+
+let buyCheck = false;
+let sellCheck = false;
+
+function sendMessage(message) {
+  telegramBot.sendMessage(chatId, message);
+}
+
+function setTelegramBot(bot) {
+  telegramBot = bot;
 }
 
 async function adjustQuantity(symbol, quantity) {
@@ -46,51 +67,12 @@ async function adjustQuantity(symbol, quantity) {
   }
 }
 
-// 매수 및 매도 조건 설정
-const rsiBuyThreshold = 35; // RSI 과매도 조건
-const rsiSellThreshold = 65; // RSI 과매수 조건
-
-// 손절, 손익 조건
-const stopLossPercent = -5; // 손절 조건
-const stopPlusPercent = 25; // 손익 조건
-let buyPrice = null;
-let position = null; // 포지션 상태 변경
-let buyUsdtAmount = 0;
-
-let intervalHandler = null;
-let telegramBot = null;
-
-function sendMessage(message) {
-  telegramBot.sendMessage(chatId, message);
-}
-
-function setTelegramBot(bot) {
-  telegramBot = bot;
-}
-
 // 거래 데이터 가져오기
 const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
-  // 마지막 500개의 캔들 데이터를 가져옵니다.
-  const candles = await binance.futuresCandles(symbol, interval, {
-    limit: 500,
-  });
-  const closes = candles.map((c) => parseFloat(c[4]));
-  const lows = candles.map((c) => parseFloat(c[3]));
-  const highs = candles.map((c) => parseFloat(c[2]));
-  const baseAsset = symbol.replace('USDT', '');
+  const { lastRSI, lastBB, lastClose, lastHigh, lastLow } =
+    await fetchCandlestickData(binance, symbol, interval, 1500);
 
-  // RSI 및 볼린저 밴드 지표 계산
-  const rsiValues = RSI.calculate({ period: 14, values: closes });
-  const bbValues = BollingerBands.calculate({
-    period: 20,
-    stdDev: 2,
-    values: closes,
-  });
-  const lastClose = closes[closes.length - 1];
-  const lastLow = lows[lows.length - 1];
-  const lastHigh = highs[highs.length - 1];
-  const lastRSI = rsiValues[rsiValues.length - 1];
-  const lastBB = bbValues[bbValues.length - 1];
+  const baseAsset = symbol.replace('USDT', '');
 
   // 계정 잔액 조회
   const accountInfo = await binance.account();
@@ -121,11 +103,59 @@ const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
   };
 };
 
-//trade('BTCUSDT', '15m');
+//매수 체크 로직
+const getBuyCheck = async (rsi, lastClose, bb, lastLow) => {
+  if (coolDownTime > new Date().getTime()) {
+    return false;
+  }
+
+  if (buyCheck && lastClose > bb.lower && lastLow > bb.lower) {
+    buyCheck = false;
+    return true;
+  } else if (rsi < rsiBuyThreshold && lastClose < bb.lower) {
+    if (!buyCheck) {
+      buyCheck = true;
+      coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
+      return false;
+    } else {
+      buyCheck = false;
+    }
+    return true;
+  }
+  return false;
+};
+
+//매도 체크 로직
+const getSellCheck = async (rsi, lastClose, bb, lastHigh) => {
+  if (coolDownTime > new Date().getTime()) {
+    return false;
+  }
+
+  if (sellCheck && lastClose < bb.upper && lastHigh < bb.upper) {
+    sellCheck = false;
+    return true;
+  } else if (rsi < rsiBuyThreshold && lastClose < bb.lower) {
+    if (!sellCheck) {
+      sellCheck = true;
+      coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
+      return false;
+    } else {
+      sellCheck = false;
+    }
+    return true;
+  }
+  return false;
+};
+
+trade('BTCUSDT', '15m');
 
 // 트레이밍 함수
 async function trade(symbol, interval = '15m') {
   try {
+    // 쿨다운 시간 계산 (분봉 간격의 5배)
+    const intervalMinutes = parseFloat(interval.replace(/[^0-9\.]+/g, ''));
+    coolDownMilliseconds = intervalMinutes * 2 * 60 * 1000;
+
     const {
       usdtBalance,
       baseBalance,
@@ -153,13 +183,12 @@ async function trade(symbol, interval = '15m') {
       checkStopLoss(symbol, parseFloat(currentPrice), parseFloat(baseBalance));
     }
 
+    // 거래 조건 확인
+    const checkBuy = await getBuyCheck(lastRSI, lastClose, lastBB, lastLow);
+    const checkSell = await getSellCheck(lastRSI, lastClose, lastBB, lastHigh);
+
     // 매수 조건 확인
-    if (
-      quantity > 0.001 &&
-      lastRSI <= rsiBuyThreshold &&
-      lastClose <= lastBB.lower &&
-      lastLow <= lastBB.lower
-    ) {
+    if (quantity > 0.001 && checkBuy) {
       const orderResult = await binance.marketBuy(symbol, quantity);
       console.log(orderResult);
 
@@ -167,35 +196,26 @@ async function trade(symbol, interval = '15m') {
       buyPrice = orderResult?.fills[0]?.price;
       buyUsdtAmount = parseFloat(usdtBalance);
 
-      sendMessage(
-        `매수 조건 충족. 
+      sendMessage(`매수 조건 충족. 
 RSI : ${lastRSI},
 Close : ${lastClose},
 BB.lower : ${lastBB.lower},
 BB.upper : ${lastBB.upper}        
-${usdtBalance}USDT 수량으로 ${symbol} ${buyPrice}가격으로 ${quantity}개 매수 실행.`
-      );
+${usdtBalance}USDT 수량으로 ${symbol} ${buyPrice}가격으로 ${quantity}개 매수 실행.`);
     }
     // 매도 조건 확인
-    else if (
-      baseBalance > 0.00001 &&
-      lastRSI >= rsiSellThreshold &&
-      lastClose >= lastBB.upper &&
-      lastHigh >= lastBB.upper
-    ) {
+    else if (baseBalance > 0.00001 && checkSell) {
       const adjustBalance = await adjustQuantity(symbol, baseBalance);
       const orderResult = await binance.marketSell(symbol, adjustBalance);
       console.log(orderResult);
 
-      sendMessage(
-        `매도 조건 충족. 
+      sendMessage(`매도 조건 충족. 
 RSI : ${lastRSI},
 Close : ${lastClose},
 BB.lower : ${lastBB.lower},
 BB.upper : ${lastBB.upper},
 산가격 : ${buyPrice}, 판가격: ${currentPrice}
-${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`
-      );
+${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.`);
 
       position = 'none';
       buyPrice = 0;
@@ -367,77 +387,11 @@ ${(((currentPrice - buyPrice) / buyPrice) * 100).toFixed(2)}%`
   }
 };
 
-//현재 계좌를 firestore로 전송
-const sendUSDTBalance = async () => {
-  try {
-    // 현물 계좌 정보 가져오기
-    const spotAccountInfo = await binance.balance();
-
-    // 현물 자산 목록 가져오기
-    const spotAssets = Object.keys(spotAccountInfo).filter(
-      (asset) => parseFloat(spotAccountInfo[asset].available) > 0
-    );
-
-    // 선물 계좌 정보 가져오기
-    const futuresAccountInfo = await binance.futuresAccount();
-    const futuresAssets = futuresAccountInfo.assets.filter(
-      (asset) => parseFloat(asset.walletBalance) > 0
-    );
-
-    // USDT로 환산한 현물 자산 가치 계산
-    let totalValueInUSDT = 0;
-    for (let asset of spotAssets) {
-      const amount = parseFloat(spotAccountInfo[asset].available);
-      if (asset === 'USDT') {
-        totalValueInUSDT += amount;
-      } else {
-        const ticker = await binance.prices(`${asset}USDT`);
-        const priceInUSDT = parseFloat(ticker[`${asset}USDT`]);
-        if (priceInUSDT) {
-          totalValueInUSDT += amount * priceInUSDT;
-        }
-      }
-    }
-
-    // USDT로 환산한 선물 자산 가치 계산
-    for (let asset of futuresAssets) {
-      const amount = parseFloat(asset.walletBalance);
-      if (asset.asset === 'USDT') {
-        totalValueInUSDT += amount;
-      } else {
-        const ticker = await binance.prices(`${asset.asset}USDT`);
-        const priceInUSDT = parseFloat(ticker[`${asset.asset}USDT`]);
-        if (priceInUSDT) {
-          totalValueInUSDT += amount * priceInUSDT;
-        }
-      }
-    }
-
-    console.log(
-      `Total asset value in USDT (Spot + Futures): ${totalValueInUSDT.toFixed(
-        2
-      )} USDT`
-    );
-
-    const response = await axios.get(
-      'https://addautocoindata-z27h2wdzna-uc.a.run.app/',
-      {
-        params: {
-          currentPrice: totalValueInUSDT.toFixed(2),
-        },
-      }
-    );
-    console.log('API 호출 성공:', response.data);
-  } catch (error) {
-    console.error('USDT balance check failed:', error);
-  }
-};
-
 exports.binance = {
   startTrade,
   endTrade,
   setTelegramBot,
   getBalance,
   sendTradeData,
-  sendUSDTBalance,
+  binance,
 };

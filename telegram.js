@@ -1,13 +1,14 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { binance } = require('./binance');
+const { binance } = require('./binance_spot');
 const binanceFutures = require('./binance_futures').binance;
+const { sendUSDTBalance } = require('./binance_common').binance_common;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const futureToken = process.env.TELEGRAM_FUTURE_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 const futureBot = new TelegramBot(futureToken, { polling: true });
 
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const args = msg.text.split(' ');
   if (args[0] === '/시작') {
@@ -24,12 +25,15 @@ bot.on('message', (msg) => {
   } else if (args[0] === '/현재') {
     const symbol = args[1];
     binance.sendTradeData(symbol);
+  } else if (args[0] === '/총잔액') {
+    const totalBalance = await sendUSDTBalance(binance.binance);
+    bot.sendMessage(chatId, `총 잔액: ${totalBalance}`);
   } else {
     bot.sendMessage(chatId, `Received your message ${msg.text}`);
   }
 });
 
-futureBot.on('message', (msg) => {
+futureBot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const args = msg.text.split(' ');
   if (args[0] === '/시작') {
@@ -44,6 +48,9 @@ futureBot.on('message', (msg) => {
     binanceFutures.sendPositionData();
   } else if (args[0] === '/잔액') {
     binanceFutures.sendUSDTBalance();
+  } else if (args[0] === '/총잔액') {
+    const totalBalance = await sendUSDTBalance(binance.binance);
+    futureBot.sendMessage(chatId, `총 잔액: ${totalBalance}`);
   } else {
     futureBot.sendMessage(chatId, `Received your message ${msg.text}`);
   }
