@@ -217,7 +217,7 @@ const getBuyCheck = async (
   ) {
     if (!buyCheck) {
       buyCheck = true;
-      coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
+      coolDownTime = new Date().getTime() + coolDownMilliseconds;
       return false;
     } else {
       buyCheck = false;
@@ -284,7 +284,7 @@ async function trade(symbol, interval = '15m') {
   try {
     // 쿨다운 시간 계산 (분봉 간격의 5배)
     const intervalMinutes = parseFloat(interval.replace(/[^0-9\.]+/g, ''));
-    coolDownMilliseconds = intervalMinutes * 2 * 60 * 1000;
+    coolDownMilliseconds = intervalMinutes * 1 * 60 * 1000;
 
     // 레버리지 설정
     const setLeverage = 30;
