@@ -331,8 +331,8 @@ async function trade(symbol, interval = '15m') {
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
 선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
-볼린저 하단: ${bb.lower.toFixed(3)},
-볼린저 상단: ${bb.upper.toFixed(3)}
+볼린저 하단: ${lastBB.lower.toFixed(3)},
+볼린저 상단: ${lastBB.upper.toFixed(3)}
 `);
     }
     // 매도 조건 확인
@@ -342,8 +342,8 @@ ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행
 선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
-볼린저 하단: ${bb.lower.toFixed(3)},
-볼린저 상단: ${bb.upper.toFixed(3)}
+볼린저 하단: ${lastBB.lower.toFixed(3)},
+볼린저 상단: ${lastBB.upper.toFixed(3)}
 `);
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');

@@ -1,6 +1,6 @@
 require('dotenv').config();
 const Binance = require('node-binance-api');
-const { truncateNumber } = require('./utils');
+const { truncateNumber } = require('./utils').utils;
 const { fetchCandlestickData } = require('./binance_common').binance_common;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
 
