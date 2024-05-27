@@ -70,7 +70,7 @@ async function adjustQuantity(symbol, quantity) {
 // 거래 데이터 가져오기
 const getTradeData = async (symbol = 'BTCUSDT', interval = '15m') => {
   const { lastRSI, lastBB, lastClose, lastHigh, lastLow } =
-    await fetchCandlestickData(binance, symbol, interval, 1500);
+    await fetchCandlestickData(binance, symbol, interval, 1000);
 
   const baseAsset = symbol.replace('USDT', '');
 

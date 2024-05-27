@@ -291,7 +291,7 @@ async function trade(symbol, interval = '15m') {
     await binance.futuresLeverage(symbol, setLeverage);
 
     const { lastRSI, lastBB, lastClose, lastHigh, lastLow } =
-      await fetchCandlestickData(binance, symbol, interval, 1500);
+      await fetchCandlestickData(binance, symbol, interval, 1000);
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol);
 
