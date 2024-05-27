@@ -33,6 +33,11 @@ bot.on('message', async (msg) => {
   }
 });
 
+bot.on('polling_error', (error) => {
+  console.error('Bot Polling error:', error.message);
+  console.error(error.stack);
+});
+
 futureBot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const args = msg.text.split(' ');
@@ -54,6 +59,11 @@ futureBot.on('message', async (msg) => {
   } else {
     futureBot.sendMessage(chatId, `Received your message ${msg.text}`);
   }
+});
+
+futureBot.on('polling_error', (error) => {
+  console.error('FutureBot Polling error:', error.message);
+  console.error(error.stack);
 });
 
 exports.bot = bot;
