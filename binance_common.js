@@ -36,7 +36,7 @@ const calculateIndicators = async (candles) => {
     const rsiValues = RSI.calculate({ period: 14, values: closes });
     const bbValues = BollingerBands.calculate({
       period: 25,
-      stdDev: 2,
+      stdDev: 2.5,
       values: closes,
     });
     return {
