@@ -11,8 +11,8 @@ const binance = new Binance().options({
 });
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 33; // RSI 과매도 조건
-const rsiSellThreshold = 60; // RSI 과매수 조건
+const rsiBuyThreshold = 30; // RSI 과매도 조건
+const rsiSellThreshold = 65; // RSI 과매수 조건
 
 // 손절, 손익 조건
 const stopLossPercent = -5; // 손절 조건
