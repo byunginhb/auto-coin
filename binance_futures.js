@@ -17,7 +17,7 @@ const rsiBuyThreshold = 30; // RSI 과매도 조건
 const rsiSellThreshold = 65; // RSI 과매수 조건
 
 // 손절, 손익 조건
-const stopLossUSDT = -10;
+const stopLossUSDT = -5;
 const stopPlusUSDT = 40;
 
 let intervalHandler = null;
@@ -186,18 +186,6 @@ const getBuyCheck = async (
   position,
   lastLow
 ) => {
-  if (positionAmt < 0 && rsi < rsiBuyThreshold && lastClose < bb.lower) {
-    const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-      await getPositionData(position);
-
-    await closePosition(symbol, positionAmt);
-    sendMessage(
-      `${symbol} 숏 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT`
-    );
-    await sendUSDTBalance();
-  }
-
   if (coolDownTime > new Date().getTime()) {
     return false;
   }
@@ -222,6 +210,17 @@ const getBuyCheck = async (
     } else {
       buyCheck = false;
     }
+
+    const { symbol, positionAmt, profitPercent, unrealizedProfit } =
+      await getPositionData(position);
+
+    await closePosition(symbol, positionAmt);
+    sendMessage(
+      `${symbol} 숏 포지션 청산
+실현손익: ${unrealizedProfit.toFixed(2)}USDT`
+    );
+    await sendUSDTBalance();
+
     return true;
   }
   return false;
@@ -236,18 +235,6 @@ const getSellCheck = async (
   position,
   lastHigh
 ) => {
-  if (positionAmt > 0 && rsi > rsiSellThreshold && lastClose > bb.upper) {
-    const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-      await getPositionData(position);
-
-    await closePosition(symbol, positionAmt);
-    sendMessage(
-      `${symbol} 롱 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT`
-    );
-    await sendUSDTBalance();
-  }
-
   if (coolDownTime > new Date().getTime()) {
     return false;
   }
@@ -272,6 +259,16 @@ const getSellCheck = async (
     } else {
       sellCheck = false;
     }
+    const { symbol, positionAmt, profitPercent, unrealizedProfit } =
+      await getPositionData(position);
+
+    await closePosition(symbol, positionAmt);
+    sendMessage(
+      `${symbol} 롱 포지션 청산
+실현손익: ${unrealizedProfit.toFixed(2)}USDT`
+    );
+    await sendUSDTBalance();
+
     return true;
   }
   return false;
@@ -287,7 +284,7 @@ async function trade(symbol, interval = '15m') {
     coolDownMilliseconds = intervalMinutes * 1 * 60 * 1000;
 
     // 레버리지 설정
-    const setLeverage = 30;
+    const setLeverage = 2;
     await binance.futuresLeverage(symbol, setLeverage);
 
     const { lastRSI, lastBB, lastClose, lastHigh, lastLow } =
