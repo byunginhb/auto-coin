@@ -16,7 +16,7 @@ const rsiSellThreshold = 65; // RSI 과매수 조건
 
 // 손절, 손익 조건
 const stopLossPercent = -5; // 손절 조건
-const stopPlusPercent = 45; // 손익 조건
+const stopPlusPercent = 15; // 손익 조건
 
 let intervalHandler = null;
 let telegramBot = null;
@@ -115,7 +115,7 @@ const getBuyCheck = async (rsi, lastClose, bb, lastLow) => {
   } else if (rsi < rsiBuyThreshold && lastClose < bb.lower) {
     if (!buyCheck) {
       buyCheck = true;
-      coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
+      coolDownTime = new Date().getTime() + coolDownMilliseconds;
       return false;
     } else {
       buyCheck = false;

@@ -18,7 +18,7 @@ const rsiSellThreshold = 65; // RSI 과매수 조건
 
 // 손절, 손익 조건
 const stopLossUSDT = -5;
-const stopPlusUSDT = 40;
+const stopPlusUSDT = 15;
 
 let intervalHandler = null;
 let telegramBot = null;
@@ -211,15 +211,17 @@ const getBuyCheck = async (
       buyCheck = false;
     }
 
-    const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-      await getPositionData(position);
+    if (positionAmt < 0) {
+      const { symbol, positionAmt, profitPercent, unrealizedProfit } =
+        await getPositionData(position);
 
-    await closePosition(symbol, positionAmt);
-    sendMessage(
-      `${symbol} 숏 포지션 청산
+      await closePosition(symbol, positionAmt);
+      sendMessage(
+        `${symbol} 숏 포지션 청산
 실현손익: ${unrealizedProfit.toFixed(2)}USDT`
-    );
-    await sendUSDTBalance();
+      );
+      await sendUSDTBalance();
+    }
 
     return true;
   }
@@ -254,20 +256,23 @@ const getSellCheck = async (
   ) {
     if (!sellCheck) {
       sellCheck = true;
-      coolDownTime = new Date().getTime() + coolDownMilliseconds / 2;
+      coolDownTime = new Date().getTime() + coolDownMilliseconds;
       return false;
     } else {
       sellCheck = false;
     }
-    const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-      await getPositionData(position);
 
-    await closePosition(symbol, positionAmt);
-    sendMessage(
-      `${symbol} 롱 포지션 청산
+    if (positionAmt > 0) {
+      const { symbol, positionAmt, profitPercent, unrealizedProfit } =
+        await getPositionData(position);
+
+      await closePosition(symbol, positionAmt);
+      sendMessage(
+        `${symbol} 롱 포지션 청산
 실현손익: ${unrealizedProfit.toFixed(2)}USDT`
-    );
-    await sendUSDTBalance();
+      );
+      await sendUSDTBalance();
+    }
 
     return true;
   }
