@@ -105,11 +105,16 @@ const sendUSDTBalance = async (binance, save = false) => {
     );
 
     if (save) {
+      // 현재 BTC 가격 가져오기
+      const btcTicker = await binance.prices('BTCUSDT');
+      const btcPrice = parseFloat(btcTicker['BTCUSDT']);
+
       const response = await axios.get(
         'https://addautocoindata-z27h2wdzna-uc.a.run.app/',
         {
           params: {
             currentPrice: totalValueInUSDT.toFixed(2),
+            btcPrice: btcPrice.toFixed(2), // BTC 가격 추가
           },
         }
       );
