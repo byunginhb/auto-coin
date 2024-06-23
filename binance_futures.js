@@ -328,25 +328,33 @@ async function trade(symbol, interval = '15m') {
     await checkStopLoss();
 
     if (checkBuy) {
-      await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
-      sendMessage(`롱포지션 조건 충족.
+      try {
+        await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
+        sendMessage(`롱포지션 조건 충족.
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
 선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
 볼린저 하단: ${lastBB.lower.toFixed(3)},
 볼린저 상단: ${lastBB.upper.toFixed(3)}
 `);
+      } catch (error) {
+        sendMessage(`롱포지션 실행시 에러 발생: ${error.message}`);
+      }
     }
     // 매도 조건 확인
     else if (checkSell) {
-      await openPosition(symbol, adjustedQuantity, 'SHORT', currentPrice);
-      sendMessage(`숏포지션 조건 충족. 
+      try {
+        await openPosition(symbol, adjustedQuantity, 'SHORT', currentPrice);
+        sendMessage(`숏포지션 조건 충족. 
 ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행
 선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
 볼린저 하단: ${lastBB.lower.toFixed(3)},
 볼린저 상단: ${lastBB.upper.toFixed(3)}
 `);
+      } catch (error) {
+        sendMessage(`숏포지션 실행시 에러 발생: ${error.message}`);
+      }
     } else {
       console.log('조건에 해당하지 않음. 대기합니다.');
     }

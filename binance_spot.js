@@ -239,7 +239,6 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
     const lossThreshold = buyUsdtAmount * (1 + stopLossPercent / 100);
     const profitThreshold = buyUsdtAmount * (1 + stopPlusPercent / 100);
     const currentUSDTAmount = currentPrice * baseBalance;
-
     const quantity = truncateNumber(baseBalance, 4);
 
     // 손절 조건 확인
@@ -258,21 +257,21 @@ const checkStopLoss = async (symbol, currentPrice, baseBalance) => {
       buyUsdtAmount = 0;
       getBalance(symbol);
     }
-    // 수익 실현 조건 확인
-    else if (currentUSDTAmount >= profitThreshold) {
-      await binance.marketSell(symbol, quantity);
-      sendMessage(
-        `수익 실현 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
-      수익 USDT: ${(currentUSDTAmount - buyUsdtAmount).toFixed(2)}, 수익율 : ${(
-          ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) *
-          100
-        ).toFixed(2)}%
-      `
-      );
-      position = 'none'; // 포지션 초기화
-      buyUsdtAmount = 0;
-      getBalance(symbol);
-    }
+    // 수익 실현 조건 확인( 미사용 )
+    // else if (currentUSDTAmount >= profitThreshold) {
+    //   await binance.marketSell(symbol, quantity);
+    //   sendMessage(
+    //     `수익 실현 조건 충족. ${baseBalance} 수량으로 ${currentPrice} ${symbol} 매도 실행.
+    //   수익 USDT: ${(currentUSDTAmount - buyUsdtAmount).toFixed(2)}, 수익율 : ${(
+    //       ((currentUSDTAmount - buyUsdtAmount) / buyUsdtAmount) *
+    //       100
+    //     ).toFixed(2)}%
+    //   `
+    //   );
+    //   position = 'none'; // 포지션 초기화
+    //   buyUsdtAmount = 0;
+    //   getBalance(symbol);
+    // }
   } catch (error) {
     console.error('Stop loss check failed:', error);
     if (error?.body?.code) {
