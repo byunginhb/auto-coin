@@ -13,12 +13,12 @@ const binance = new Binance().options({
 });
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 32; // RSI 과매도 조건
-const rsiSellThreshold = 65; // RSI 과매수 조건
+const rsiBuyThreshold = 36; // RSI 과매도 조건
+const rsiSellThreshold = 70; // RSI 과매수 조건
 
 // 손절, 손익 조건
-const stopLossUSDT = -5;
-const stopPlusUSDT = 15;
+const stopLossUSDT = -10;
+const stopPlusUSDT = 30;
 
 let intervalHandler = null;
 let telegramBot = null;
@@ -161,6 +161,22 @@ async function checkStopLoss() {
 
         // 손절시 coolDownTime 설정
         if (profitPercent <= stopLossUSDT) {
+          coolDownTime = new Date().getTime() + coolDownMilliseconds;
+        }
+      } else if (unrealizedProfit >= stopPlusUSDT) {
+        buyCheck = false;
+        sellCheck = false;
+
+        await closePosition(symbol, positionAmt);
+        await sendUSDTBalance();
+
+        sendMessage(
+          `${symbol} 포지션 청산
+실현손익: ${unrealizedProfit.toFixed(2)}USDT`
+        );
+
+        // 익절시 coolDownTime 설정
+        if (profitPercent >= stopPlusUSDT) {
           coolDownTime = new Date().getTime() + coolDownMilliseconds;
         }
       }
