@@ -212,8 +212,7 @@ const getBuyCheck = async (
     }
 
     if (positionAmt < 0) {
-      const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-        await getPositionData(position);
+      const { symbol, unrealizedProfit } = await getPositionData(position);
 
       await closePosition(symbol, positionAmt);
       sendMessage(
@@ -263,8 +262,7 @@ const getSellCheck = async (
     }
 
     if (positionAmt > 0) {
-      const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-        await getPositionData(position);
+      const { symbol, unrealizedProfit } = await getPositionData(position);
 
       await closePosition(symbol, positionAmt);
       sendMessage(
