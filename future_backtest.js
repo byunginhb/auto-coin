@@ -43,7 +43,10 @@ async function backtest(
   let results = [];
 
   try {
-    const dataFilePath = path.resolve(__dirname, 'backdata.json');
+    const dataFilePath = path.resolve(
+      __dirname,
+      `backdata${start}-${end}.json`
+    );
     let candles;
 
     if (fs.existsSync(dataFilePath)) {
@@ -231,7 +234,7 @@ function intervalToMilliseconds(interval) {
 
 // 백테스트 실행
 // backtest('BTCUSDT');
-optimizeParameters();
+// optimizeParameters();
 
 async function optimizeParameters() {
   const symbol = 'BTCUSDT';
@@ -240,10 +243,10 @@ async function optimizeParameters() {
   const end = '2024-06-25';
 
   // 범위와 간격 설정
-  const stopLossRange = { min: -15, max: -5, step: 5 };
-  const takeProfitRange = { min: 15, max: 30, step: 5 };
+  const stopLossRange = { min: -20, max: -5, step: 5 };
+  const takeProfitRange = { min: 15, max: 40, step: 5 };
   const rsiBuyThresholdRange = { min: 30, max: 40, step: 2 };
-  const rsiSellThresholdRange = { min: 60, max: 80, step: 5 };
+  const rsiSellThresholdRange = { min: 60, max: 80, step: 2 };
 
   let bestResult = {
     stopLossUSDT: null,
