@@ -25,7 +25,7 @@ async function backtest(
 ) {
   let initialCapital = 1000;
   let currentBalance = initialCapital;
-  let position = null; // 현재 포지션 ('LONG', 'SHORT', 또는 null)
+  let position = null; // 현재 포지션 ('LONG' 또는 null)
   let entryPrice = 0;
   let lastTradeTime = 0;
   let cooltimeMilliseconds = 15 * 60 * 1000; // 15분
@@ -34,7 +34,7 @@ async function backtest(
   try {
     const dataFilePath = path.resolve(
       __dirname,
-      `future_backdata${start}-${end}-${interval}.json`
+      `spot_backdata_${start}_${end}.json`
     );
     let candles;
 
@@ -55,7 +55,6 @@ async function backtest(
     }
 
     let buyCheck = false;
-    let sellCheck = false;
 
     for (let i = 50; i < candles.length; i++) {
       const candleSlice = candles.slice(i - 50, i);
@@ -71,14 +70,11 @@ async function backtest(
         if (lastRSI < rsiBuyThreshold && lastClose < lastBB.lower) {
           buyCheck = true;
           cooltimeMilliseconds = 15 * 60 * 1000; // 15분
-        } else if (lastRSI > rsiSellThreshold && lastClose > lastBB.upper) {
-          sellCheck = true;
-          cooltimeMilliseconds = 15 * 60 * 1000; // 15분
         }
       }
 
       if (buyCheck && lastClose > lastBB.lower && lastLow > lastBB.lower) {
-        // 롱 포지션 진입
+        // 매수 조건 충족, 포지션 진입
         position = 'LONG';
         entryPrice = lastClose;
         lastTradeTime = currentTime;
@@ -90,23 +86,6 @@ async function backtest(
           profit: 0,
           totalBalance: currentBalance,
         });
-      } else if (
-        sellCheck &&
-        lastClose < lastBB.upper &&
-        lastHigh < lastBB.upper
-      ) {
-        // 숏 포지션 진입
-        position = 'SHORT';
-        entryPrice = lastClose;
-        lastTradeTime = currentTime;
-        sellCheck = false;
-        results.push({
-          date: new Date(candles[i][0]).toISOString(),
-          action: 'SELL',
-          price: entryPrice,
-          profit: 0,
-          totalBalance: currentBalance,
-        });
       }
 
       if (position === 'LONG') {
@@ -114,33 +93,14 @@ async function backtest(
 
         if (
           profit >= (takeProfitPercent / 100) * currentBalance ||
-          profit <= -(stopLossPercent / 100) * currentBalance
+          profit <= (stopLossPercent / 100) * currentBalance
         ) {
-          // 롱 포지션 종료
+          // 포지션 종료
           currentBalance += profit;
           lastTradeTime = currentTime;
           results.push({
             date: new Date(candles[i][0]).toISOString(),
             action: 'SELL',
-            price: lastClose,
-            profit: profit,
-            totalBalance: currentBalance,
-          });
-          position = null;
-        }
-      } else if (position === 'SHORT') {
-        const profit = (entryPrice - lastClose) * (currentBalance / entryPrice);
-
-        if (
-          profit >= (takeProfitPercent / 100) * currentBalance ||
-          profit <= -(stopLossPercent / 100) * currentBalance
-        ) {
-          // 숏 포지션 종료
-          currentBalance += profit;
-          lastTradeTime = currentTime;
-          results.push({
-            date: new Date(candles[i][0]).toISOString(),
-            action: 'BUY',
             price: lastClose,
             profit: profit,
             totalBalance: currentBalance,
@@ -163,7 +123,7 @@ async function backtest(
     if (saveCSV) {
       // 백테스트 결과를 저장할 CSV 작성자 설정
       const csvWriter = createCsvWriter({
-        path: `future_backtest_results_${Date.now().toString()}.csv`,
+        path: `spot_backtest_results_${Date.now().toString()}.csv`,
         header: [
           { id: 'date', title: 'DATE' },
           { id: 'action', title: 'ACTION' },
@@ -213,7 +173,7 @@ async function fetchCandlestickData(symbol, interval, startTime, endTime) {
     let start = startTime;
 
     while (start < endTime) {
-      const newCandles = await binance.futuresCandles(symbol, interval, {
+      const newCandles = await binance.candlesticks(symbol, interval, false, {
         startTime: start,
         endTime,
       });
@@ -247,7 +207,7 @@ async function onceBacktest() {
   const finalBalance = await backtest(
     'BTCUSDT',
     '15m',
-    '2021-01-01',
+    '2024-01-01',
     '2024-06-25',
     2, // 2% 손절
     5, // 5% 익절
@@ -259,15 +219,14 @@ async function onceBacktest() {
 }
 
 async function optimizeParameters() {
-  const results = [];
   const symbol = 'BTCUSDT';
   const interval = '15m';
   const start = '2021-01-01';
-  const end = '2024-06-25';
+  const end = '2023-12-30';
 
   // 범위와 간격 설정
-  const stopLossRange = { min: 1, max: 5, step: 0.5 }; // 2% ~ 10%
-  const takeProfitRange = { min: 2, max: 5, step: 0.5 }; // 5% ~ 20%
+  const stopLossRange = { min: 2, max: 10, step: 1 }; // 2% ~ 10%
+  const takeProfitRange = { min: 5, max: 20, step: 1 }; // 5% ~ 20%
   const rsiBuyThresholdRange = { min: 30, max: 40, step: 2 };
   const rsiSellThresholdRange = { min: 60, max: 80, step: 2 };
 
@@ -312,14 +271,6 @@ async function optimizeParameters() {
             `Testing with stopLoss: ${stopLoss}%, takeProfit: ${takeProfit}%, rsiBuy: ${rsiBuy}, rsiSell: ${rsiSell}, finalBalance: ${finalBalance}`
           );
 
-          results.push({
-            stopLossPercent: stopLoss,
-            takeProfitPercent: takeProfit,
-            rsiBuyThreshold: rsiBuy,
-            rsiSellThreshold: rsiSell,
-            finalBalance: finalBalance,
-          });
-
           if (finalBalance > bestResult.finalBalance) {
             bestResult = {
               stopLossPercent: stopLoss,
@@ -335,7 +286,7 @@ async function optimizeParameters() {
   }
 
   const csvWriter = createCsvWriter({
-    path: `future_backtest_optimizeParameters_${Date.now().toString()}.csv`,
+    path: `spot_backtest_optimizeParameters_${Date.now().toString()}.csv`,
     header: [
       { id: 'stopLossPercent', title: 'STOP_LOSS' },
       { id: 'takeProfitPercent', title: 'TAKE_PROFIT' },
