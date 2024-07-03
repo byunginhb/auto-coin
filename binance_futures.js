@@ -14,11 +14,11 @@ const binance = new Binance().options({
 
 // 매수 및 매도 조건 설정
 const rsiBuyThreshold = 40; // RSI 과매도 조건
-const rsiSellThreshold = 70; // RSI 과매수 조건
+const rsiSellThreshold = 66; // RSI 과매수 조건
 
 // 손절, 손익 조건
-const stopLossUSDT = -10;
-const stopPlusUSDT = 35;
+const stopLossPercent = 1.5; // 손절 퍼센트
+const takeProfitPercent = 5; // 익절 퍼센트
 
 let intervalHandler = null;
 let telegramBot = null;
@@ -147,7 +147,7 @@ async function checkStopLoss() {
         await getPositionData(pos);
 
       // 손절 로직
-      if (unrealizedProfit <= stopLossUSDT) {
+      if (profitPercent <= -stopLossPercent) {
         buyCheck = false;
         sellCheck = false;
 
@@ -160,10 +160,10 @@ async function checkStopLoss() {
         );
 
         // 손절시 coolDownTime 설정
-        if (profitPercent <= stopLossUSDT) {
+        if (profitPercent <= -stopLossPercent) {
           coolDownTime = new Date().getTime() + coolDownMilliseconds;
         }
-      } else if (unrealizedProfit >= stopPlusUSDT) {
+      } else if (profitPercent >= takeProfitPercent) {
         buyCheck = false;
         sellCheck = false;
 
@@ -176,7 +176,7 @@ async function checkStopLoss() {
         );
 
         // 익절시 coolDownTime 설정
-        if (profitPercent >= stopPlusUSDT) {
+        if (profitPercent >= takeProfitPercent) {
           coolDownTime = new Date().getTime() + coolDownMilliseconds;
         }
       }
@@ -303,7 +303,7 @@ async function trade(symbol, interval = '15m') {
     coolDownMilliseconds = intervalMinutes * 1 * 60 * 1000;
 
     // 레버리지 설정
-    const setLeverage = 2;
+    const setLeverage = 1;
     await binance.futuresLeverage(symbol, setLeverage);
 
     const { lastRSI, lastBB, lastClose, lastHigh, lastLow } =

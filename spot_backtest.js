@@ -58,7 +58,7 @@ async function backtest(
 
     for (let i = 50; i < candles.length; i++) {
       const candleSlice = candles.slice(i - 50, i);
-      const indicators = await calculateIndicators(candleSlice);
+      const indicators = calculateIndicators(candleSlice);
       const { lastRSI, lastBB, lastClose, lastHigh, lastLow } = indicators;
 
       const currentTime = new Date(candles[i][0]).getTime();
@@ -93,7 +93,7 @@ async function backtest(
 
         if (
           profit >= (takeProfitPercent / 100) * currentBalance ||
-          profit <= (stopLossPercent / 100) * currentBalance
+          profit <= -(stopLossPercent / 100) * currentBalance
         ) {
           // 포지션 종료
           currentBalance += profit;
@@ -146,7 +146,7 @@ async function backtest(
 }
 
 // 지표 계산
-async function calculateIndicators(candles) {
+function calculateIndicators(candles) {
   const closes = candles.map((c) => parseFloat(c[4]));
   const highs = candles.map((c) => parseFloat(c[2]));
   const lows = candles.map((c) => parseFloat(c[3]));
@@ -207,26 +207,27 @@ async function onceBacktest() {
   const finalBalance = await backtest(
     'BTCUSDT',
     '15m',
-    '2024-01-01',
+    '2021-01-01',
     '2024-06-25',
-    2, // 2% 손절
-    5, // 5% 익절
-    38,
-    62,
+    2, // 손절%
+    5, // 익절%
+    30,
+    65,
     true
   );
   console.log(finalBalance);
 }
 
 async function optimizeParameters() {
+  const results = [];
   const symbol = 'BTCUSDT';
   const interval = '15m';
   const start = '2021-01-01';
-  const end = '2023-12-30';
+  const end = '2024-06-25';
 
   // 범위와 간격 설정
-  const stopLossRange = { min: 2, max: 10, step: 1 }; // 2% ~ 10%
-  const takeProfitRange = { min: 5, max: 20, step: 1 }; // 5% ~ 20%
+  const stopLossRange = { min: 1, max: 5, step: 0.5 }; // 2% ~ 10%
+  const takeProfitRange = { min: 2, max: 5, step: 0.5 }; // 5% ~ 20%
   const rsiBuyThresholdRange = { min: 30, max: 40, step: 2 };
   const rsiSellThresholdRange = { min: 60, max: 80, step: 2 };
 
@@ -256,7 +257,7 @@ async function optimizeParameters() {
     for (let takeProfit of takeProfitOptions) {
       for (let rsiBuy of rsiBuyThresholdOptions) {
         for (let rsiSell of rsiSellThresholdOptions) {
-          const finalBalance = await backtest(
+          let finalBalance = await backtest(
             symbol,
             interval,
             start,
@@ -270,6 +271,14 @@ async function optimizeParameters() {
           console.log(
             `Testing with stopLoss: ${stopLoss}%, takeProfit: ${takeProfit}%, rsiBuy: ${rsiBuy}, rsiSell: ${rsiSell}, finalBalance: ${finalBalance}`
           );
+
+          results.push({
+            stopLossPercent: stopLoss,
+            takeProfitPercent: takeProfit,
+            rsiBuyThreshold: rsiBuy,
+            rsiSellThreshold: rsiSell,
+            finalBalance: finalBalance,
+          });
 
           if (finalBalance > bestResult.finalBalance) {
             bestResult = {
