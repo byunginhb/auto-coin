@@ -391,7 +391,7 @@ async function optimizeParameters() {
 
 // 백테스트 실행
 // optimizeParameters();
-onceBacktest();
+// onceBacktest();
 
 exports.backtest = {
   backtest,
