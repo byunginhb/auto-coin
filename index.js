@@ -7,6 +7,7 @@ const binanceFutures = require('./binance_futures').binance;
 const { sendUSDTBalance } = require('./binance_common').binance_common;
 const future_backtest = require('./future_backtest').backtest;
 const spot_backtest = require('./spot_backtest').backtest;
+const martin_bb_backtest = require('./martin_bb_backtest').backtest;
 const app = express();
 const port = process.env.PORT || 3000;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
