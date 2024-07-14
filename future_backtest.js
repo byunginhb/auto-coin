@@ -78,35 +78,41 @@ async function backtest(
       }
 
       if (buyCheck && lastClose > lastBB.lower && lastLow > lastBB.lower) {
-        // 롱 포지션 진입
-        position = 'LONG';
-        entryPrice = lastClose;
-        lastTradeTime = currentTime;
-        buyCheck = false;
-        results.push({
-          date: new Date(candles[i][0]).toISOString(),
-          action: 'BUY',
-          price: entryPrice,
-          profit: 0,
-          totalBalance: currentBalance,
-        });
+        const potentialProfit = ((lastClose - entryPrice) / entryPrice) * 100;
+        if (potentialProfit > 1.5) {
+          // 롱 포지션 진입
+          position = 'LONG';
+          entryPrice = lastClose;
+          lastTradeTime = currentTime;
+          buyCheck = false;
+          results.push({
+            date: new Date(candles[i][0]).toISOString(),
+            action: 'BUY',
+            price: entryPrice,
+            profit: 0,
+            totalBalance: currentBalance,
+          });
+        }
       } else if (
         sellCheck &&
         lastClose < lastBB.upper &&
         lastHigh < lastBB.upper
       ) {
-        // 숏 포지션 진입
-        position = 'SHORT';
-        entryPrice = lastClose;
-        lastTradeTime = currentTime;
-        sellCheck = false;
-        results.push({
-          date: new Date(candles[i][0]).toISOString(),
-          action: 'SELL',
-          price: entryPrice,
-          profit: 0,
-          totalBalance: currentBalance,
-        });
+        const potentialProfit = ((entryPrice - lastClose) / entryPrice) * 100;
+        if (potentialProfit > 1.5) {
+          // 숏 포지션 진입
+          position = 'SHORT';
+          entryPrice = lastClose;
+          lastTradeTime = currentTime;
+          sellCheck = false;
+          results.push({
+            date: new Date(candles[i][0]).toISOString(),
+            action: 'SELL',
+            price: entryPrice,
+            profit: 0,
+            totalBalance: currentBalance,
+          });
+        }
       }
 
       if (position === 'LONG') {
@@ -249,10 +255,10 @@ async function onceBacktest() {
     '15m',
     '2021-01-01',
     '2024-06-25',
-    2, // 2% 손절
+    1.5, // 2% 손절
     5, // 5% 익절
-    38,
-    62,
+    40,
+    66,
     true
   );
   console.log(finalBalance);

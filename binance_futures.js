@@ -20,6 +20,8 @@ const rsiSellThreshold = 66; // RSI 과매수 조건
 const stopLossPercent = 1.5; // 손절 퍼센트
 const takeProfitPercent = 5; // 익절 퍼센트
 
+const minimumProfitPercent = 1.5; // 최소 이익 퍼센트
+
 let intervalHandler = null;
 let telegramBot = null;
 
@@ -202,6 +204,14 @@ const getBuyCheck = async (
   position,
   lastLow
 ) => {
+  const { symbol, unrealizedProfit, profitPercent } = await getPositionData(
+    position
+  );
+
+  if (profitPercent <= minimumProfitPercent) {
+    return false;
+  }
+
   if (coolDownTime > new Date().getTime()) {
     return false;
   }
@@ -228,8 +238,6 @@ const getBuyCheck = async (
     }
 
     if (positionAmt < 0) {
-      const { symbol, unrealizedProfit } = await getPositionData(position);
-
       await closePosition(symbol, positionAmt);
       sendMessage(
         `${symbol} 숏 포지션 청산
@@ -252,6 +260,14 @@ const getSellCheck = async (
   position,
   lastHigh
 ) => {
+  const { symbol, unrealizedProfit, profitPercent } = await getPositionData(
+    position
+  );
+
+  if (profitPercent <= minimumProfitPercent) {
+    return false;
+  }
+
   if (coolDownTime > new Date().getTime()) {
     return false;
   }
@@ -278,8 +294,6 @@ const getSellCheck = async (
     }
 
     if (positionAmt > 0) {
-      const { symbol, unrealizedProfit } = await getPositionData(position);
-
       await closePosition(symbol, positionAmt);
       sendMessage(
         `${symbol} 롱 포지션 청산
