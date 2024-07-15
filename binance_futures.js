@@ -204,12 +204,12 @@ const getBuyCheck = async (
   position,
   lastLow
 ) => {
-  const { symbol, unrealizedProfit, profitPercent } = await getPositionData(
-    position
-  );
+  if (position.length > 0 && positionAmt < 0) {
+    const { profitPercent } = await getPositionData(position);
 
-  if (profitPercent <= minimumProfitPercent) {
-    return false;
+    if (profitPercent <= minimumProfitPercent) {
+      return false;
+    }
   }
 
   if (coolDownTime > new Date().getTime()) {
@@ -238,6 +238,8 @@ const getBuyCheck = async (
     }
 
     if (positionAmt < 0) {
+      const { symbol, unrealizedProfit } = await getPositionData(position);
+
       await closePosition(symbol, positionAmt);
       sendMessage(
         `${symbol} 숏 포지션 청산
@@ -260,12 +262,12 @@ const getSellCheck = async (
   position,
   lastHigh
 ) => {
-  const { symbol, unrealizedProfit, profitPercent } = await getPositionData(
-    position
-  );
+  if (position.length > 0 && positionAmt > 0) {
+    const { profitPercent } = await getPositionData(position);
 
-  if (profitPercent <= minimumProfitPercent) {
-    return false;
+    if (profitPercent <= minimumProfitPercent) {
+      return false;
+    }
   }
 
   if (coolDownTime > new Date().getTime()) {
@@ -294,6 +296,8 @@ const getSellCheck = async (
     }
 
     if (positionAmt > 0) {
+      const { symbol, unrealizedProfit } = await getPositionData(position);
+
       await closePosition(symbol, positionAmt);
       sendMessage(
         `${symbol} 롱 포지션 청산
