@@ -204,7 +204,7 @@ const getBuyCheck = async (
   position,
   lastLow
 ) => {
-  if (position.length > 0 && positionAmt < 0) {
+  if (position?.length > 0 && positionAmt < 0) {
     const { profitPercent } = await getPositionData(position);
 
     if (profitPercent <= minimumProfitPercent) {
@@ -262,7 +262,7 @@ const getSellCheck = async (
   position,
   lastHigh
 ) => {
-  if (position.length > 0 && positionAmt > 0) {
+  if (position?.length > 0 && positionAmt > 0) {
     const { profitPercent } = await getPositionData(position);
 
     if (profitPercent <= minimumProfitPercent) {
