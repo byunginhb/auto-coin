@@ -204,52 +204,50 @@ const getBuyCheck = async (
   position,
   lastLow
 ) => {
-  if (position?.length > 0 && positionAmt < 0) {
-    const { profitPercent } = await getPositionData(position);
-
-    if (profitPercent <= minimumProfitPercent) {
-      return false;
-    }
-  }
-
   if (coolDownTime > new Date().getTime()) {
     return false;
   }
 
-  if (
-    buyCheck &&
-    positionAmt <= 0 &&
-    lastClose > bb.lower &&
-    lastLow > bb.lower
-  ) {
-    buyCheck = false;
-    return true;
-  } else if (
-    positionAmt <= 0 &&
-    rsi < rsiBuyThreshold &&
-    lastClose < bb.lower
-  ) {
-    if (!buyCheck) {
+  // position이 없을 경우 잠재적 이익률 계산 건너뜀
+  let potentialProfit = 0;
+  if (position && position.entryPrice) {
+    const entryPrice = position.entryPrice;
+    potentialProfit = ((lastClose - entryPrice) / entryPrice) * 100;
+  }
+
+  if (buyCheck) {
+    if (
+      positionAmt <= 0 &&
+      lastClose > bb.lower &&
+      lastLow > bb.lower &&
+      (!position || potentialProfit > minimumProfitPercent) // 조건 추가
+    ) {
+      if (positionAmt < 0) {
+        const { symbol, unrealizedProfit } = await getPositionData(position);
+
+        await closePosition(symbol, positionAmt);
+        sendMessage(
+          `${symbol} 숏 포지션 청산
+  실현손익: ${unrealizedProfit.toFixed(2)}USDT`
+        );
+        await sendUSDTBalance();
+      }
+
+      buyCheck = false;
+      return true;
+    }
+  } else {
+    if (
+      positionAmt <= 0 &&
+      rsi < rsiBuyThreshold &&
+      lastClose < bb.lower &&
+      (!position || potentialProfit > minimumProfitPercent) // 조건 추가
+    ) {
       buyCheck = true;
       coolDownTime = new Date().getTime() + coolDownMilliseconds;
-      return false;
-    } else {
-      buyCheck = false;
     }
-
-    if (positionAmt < 0) {
-      const { symbol, unrealizedProfit } = await getPositionData(position);
-
-      await closePosition(symbol, positionAmt);
-      sendMessage(
-        `${symbol} 숏 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT`
-      );
-      await sendUSDTBalance();
-    }
-
-    return true;
   }
+
   return false;
 };
 
@@ -262,51 +260,47 @@ const getSellCheck = async (
   position,
   lastHigh
 ) => {
-  if (position?.length > 0 && positionAmt > 0) {
-    const { profitPercent } = await getPositionData(position);
-
-    if (profitPercent <= minimumProfitPercent) {
-      return false;
-    }
-  }
-
   if (coolDownTime > new Date().getTime()) {
     return false;
   }
 
-  if (
-    sellCheck &&
-    positionAmt >= 0 &&
-    lastClose < bb.upper &&
-    lastHigh < bb.upper
-  ) {
-    sellCheck = false;
-    return true;
-  } else if (
-    positionAmt >= 0 &&
-    rsi > rsiSellThreshold &&
-    lastHigh > bb.upper
-  ) {
-    if (!sellCheck) {
+  // position이 없을 경우 잠재적 이익률 계산 건너뜀
+  let potentialProfit = 0;
+  if (position && position.entryPrice) {
+    const entryPrice = position.entryPrice;
+    potentialProfit = ((entryPrice - lastClose) / entryPrice) * 100;
+  }
+
+  if (sellCheck) {
+    if (
+      positionAmt >= 0 &&
+      lastClose < bb.upper &&
+      lastHigh < bb.upper &&
+      (!position || potentialProfit > minimumProfitPercent) // 조건 추가
+    ) {
+      if (positionAmt > 0) {
+        const { symbol, unrealizedProfit } = await getPositionData(position);
+        await closePosition(symbol, positionAmt);
+        sendMessage(
+          `${symbol} 롱 포지션 청산
+  실현손익: ${unrealizedProfit.toFixed(2)}USDT`
+        );
+        await sendUSDTBalance();
+      }
+
+      sellCheck = false;
+      return true;
+    }
+  } else {
+    if (
+      positionAmt >= 0 &&
+      rsi > rsiSellThreshold &&
+      lastHigh > bb.upper &&
+      (!position || potentialProfit > minimumProfitPercent) // 조건 추가
+    ) {
       sellCheck = true;
       coolDownTime = new Date().getTime() + coolDownMilliseconds;
-      return false;
-    } else {
-      sellCheck = false;
     }
-
-    if (positionAmt > 0) {
-      const { symbol, unrealizedProfit } = await getPositionData(position);
-
-      await closePosition(symbol, positionAmt);
-      sendMessage(
-        `${symbol} 롱 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT`
-      );
-      await sendUSDTBalance();
-    }
-
-    return true;
   }
   return false;
 };
@@ -316,11 +310,9 @@ const getSellCheck = async (
 // 트레이딩 함수
 async function trade(symbol, interval = '15m') {
   try {
-    // 쿨다운 시간 계산 (분봉 간격의 5배)
     const intervalMinutes = parseFloat(interval.replace(/[^0-9\.]+/g, ''));
     coolDownMilliseconds = intervalMinutes * 1 * 60 * 1000;
 
-    // 레버리지 설정
     const setLeverage = 1;
     await binance.futuresLeverage(symbol, setLeverage);
 
@@ -329,7 +321,6 @@ async function trade(symbol, interval = '15m') {
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol);
 
-    // 포지션 사이징 로직
     const quantity = (parseFloat(usdtBalance) / currentPrice) * leverage;
     const adjustedQuantity = truncateNumber(quantity, 3);
 
@@ -339,7 +330,6 @@ async function trade(symbol, interval = '15m') {
       positionAmt = parseFloat(pos.positionAmt);
     }
 
-    // 거래 조건 확인
     const checkBuy = await getBuyCheck(
       lastRSI,
       lastClose,
@@ -372,9 +362,7 @@ ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
       } catch (error) {
         sendMessage(`롱포지션 실행시 에러 발생: ${error.message}`);
       }
-    }
-    // 매도 조건 확인
-    else if (checkSell) {
+    } else if (checkSell) {
       try {
         await openPosition(symbol, adjustedQuantity, 'SHORT', currentPrice);
         sendMessage(`숏포지션 조건 충족. 
