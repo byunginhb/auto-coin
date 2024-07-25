@@ -18,7 +18,7 @@ const rsiSellThreshold = 66; // RSI 과매수 조건
 
 // 손절, 손익 조건
 const stopLossPercent = 1.5; // 손절 퍼센트
-const takeProfitPercent = 5; // 익절 퍼센트
+const takeProfitPercent = 3; // 익절 퍼센트
 
 const minimumProfitPercent = 1.5; // 최소 이익 퍼센트
 
