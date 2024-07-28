@@ -1,4 +1,9 @@
-const { BollingerBands, RSI } = require('technicalindicators');
+const {
+  BollingerBands,
+  RSI,
+  SMA,
+  StochasticRSI,
+} = require('technicalindicators');
 const axios = require('axios');
 
 //선물 계좌 정보 가져오기
@@ -28,16 +33,24 @@ const fetchCandlestickData = async (binance, symbol, interval, limit) => {
 };
 
 // 기술적 지표 계산 (RSI, 볼린저 밴드)
-const calculateIndicators = async (candles) => {
+const calculateIndicators = (candles, bbPeriod = 22, bbStd = 2.2) => {
   try {
     const closes = candles.map((c) => parseFloat(c[4]));
     const highs = candles.map((c) => parseFloat(c[2]));
     const lows = candles.map((c) => parseFloat(c[3]));
     const rsiValues = RSI.calculate({ period: 14, values: closes });
     const bbValues = BollingerBands.calculate({
-      period: 22,
-      stdDev: 2.2,
+      period: bbPeriod,
+      stdDev: bbStd,
       values: closes,
+    });
+    const sma50 = SMA.calculate({ period: 50, values: closes });
+    const StochasticRSIs = StochasticRSI.calculate({
+      values: closes,
+      rsiPeriod: 14,
+      stochasticPeriod: 14,
+      kPeriod: 3,
+      dPeriod: 3,
     });
     return {
       lastRSI: rsiValues[rsiValues.length - 1],
@@ -45,6 +58,8 @@ const calculateIndicators = async (candles) => {
       lastClose: closes[closes.length - 1],
       lastHigh: highs[closes.length - 1],
       lastLow: lows[closes.length - 1],
+      sma50: sma50[sma50.length - 1],
+      stochasticRSI: StochasticRSIs[StochasticRSIs.length - 1],
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
@@ -131,4 +146,5 @@ exports.binance_common = {
   getFutureAccountInfo,
   fetchCandlestickData,
   sendUSDTBalance,
+  calculateIndicators,
 };

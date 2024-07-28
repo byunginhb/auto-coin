@@ -5,13 +5,18 @@ const futureBot = require('./telegram').futureBot;
 const binance = require('./binance_spot').binance;
 const binanceFutures = require('./binance_futures').binance;
 const { sendUSDTBalance } = require('./binance_common').binance_common;
-const future_backtest = require('./future_backtest').backtest;
-const spot_backtest = require('./spot_backtest').backtest;
-const martin_bb_backtest = require('./martin_bb_backtest').backtest;
 const app = express();
 const port = process.env.PORT || 3000;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
 const cron = require('node-cron');
+
+// back test
+const future_backtest = require('./future_backtest').backtest;
+const spot_backtest = require('./spot_backtest').backtest;
+const martin_bb_backtest = require('./martin_bb_backtest').backtest;
+const future_backtest_ma_bol = require('./future_backtest_ma_bol').backtest;
+const future_backtest_bb_stochrsi =
+  require('./future_backtest_bb_stochrsi').backtest;
 
 cron.schedule('5 0 * * *', async () => {
   try {

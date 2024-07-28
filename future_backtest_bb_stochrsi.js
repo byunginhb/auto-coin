@@ -1,6 +1,6 @@
 require('dotenv').config();
 const Binance = require('node-binance-api');
-const { BollingerBands, RSI } = require('technicalindicators');
+const { calculateIndicators } = require('./binance_common').binance_common;
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const fs = require('fs');
 const path = require('path');
@@ -17,19 +17,15 @@ async function backtest(
   interval = '15m',
   start = '2024-01-01',
   end = '2024-06-25',
-  stopLossPercent,
-  takeProfitPercent,
-  rsiBuyThreshold,
-  rsiSellThreshold,
   saveCSV = false
 ) {
   let initialCapital = 1000;
   let currentBalance = initialCapital;
   let position = null; // 현재 포지션 ('LONG', 'SHORT', 또는 null)
   let entryPrice = 0;
-  let lastTradeTime = 0;
-  let cooltimeMilliseconds = 15 * 60 * 1000; // 15분
   let results = [];
+  let stopLossPercent = 0;
+  let takeProfitPercent = 0;
 
   try {
     const dataFilePath = path.resolve(
@@ -54,117 +50,157 @@ async function backtest(
       fs.writeFileSync(dataFilePath, JSON.stringify(candles));
     }
 
-    let buyCheck = false;
-    let sellCheck = false;
+    const closePosition = (lastClose, closedDate) => {
+      let result = {};
+      if (position === 'SHORT') {
+        const profit = (entryPrice - lastClose) * (currentBalance / entryPrice);
+        const profitPercent = (profit / currentBalance) * 100;
+
+        // 숏 포지션 종료
+        currentBalance += profit;
+        result = {
+          date: closedDate,
+          action: 'BUY SHORT position closed-1',
+          price: lastClose,
+          profit: profit,
+          profitPercent: profitPercent,
+          totalBalance: currentBalance,
+        };
+        position = null;
+      } else if (position === 'LONG') {
+        const profit = (lastClose - entryPrice) * (currentBalance / entryPrice);
+        const profitPercent = (profit / currentBalance) * 100;
+
+        // 롱 포지션 종료
+        currentBalance += profit;
+        result = {
+          date: closedDate,
+          action: 'SELL LONG position closed-1',
+          price: lastClose,
+          profit: profit,
+          profitPercent: profitPercent,
+          totalBalance: currentBalance,
+        };
+        position = null;
+      }
+
+      return result;
+    };
+
+    const getBuyCheck = (
+      position,
+      lastClose,
+      lastLow,
+      lastBB,
+      stochasticRSI
+    ) => {
+      if (position === 'LONG') return false;
+
+      if (
+        lastBB.lower > lastClose &&
+        lastBB.lower > lastLow &&
+        stochasticRSI.stochRSI < 20
+      ) {
+        return true;
+      }
+
+      return false;
+    };
+
+    const getSellCheck = (
+      position,
+      lastClose,
+      lastHigh,
+      lastBB,
+      stochasticRSI
+    ) => {
+      if (position === 'SHORT') return false;
+
+      if (
+        lastBB.upper < lastClose &&
+        lastBB.upper < lastHigh &&
+        stochasticRSI.stochRSI > 80
+      ) {
+        return true;
+      }
+
+      return false;
+    };
 
     for (let i = 50; i < candles.length; i++) {
       const candleSlice = candles.slice(i - 50, i);
-      const indicators = await calculateIndicators(candleSlice);
-      const { lastRSI, lastBB, lastClose, lastHigh, lastLow } = indicators;
+      const indicators = calculateIndicators(candleSlice, 20, 3);
+      const { lastBB, stochasticRSI, lastClose, lastLow, lastHigh } =
+        indicators;
 
-      const currentTime = new Date(candles[i][0]).getTime();
-      if (currentTime - lastTradeTime < cooltimeMilliseconds) {
+      const buyCheck = getBuyCheck(
+        position,
+        lastClose,
+        lastLow,
+        lastBB,
+        stochasticRSI
+      );
+      const sellCheck = getSellCheck(
+        position,
+        lastClose,
+        lastHigh,
+        lastBB,
+        stochasticRSI
+      );
+
+      if (buyCheck) {
+        if (position === 'SHORT') {
+          results.push(
+            closePosition(
+              lastClose,
+              convertToKoreanTimeZone(new Date(candles[i][0]))
+            )
+          );
+        }
+
+        // 롱 포지션 진입
+        position = 'LONG';
+        entryPrice = lastClose;
+        results.push({
+          date: convertToKoreanTimeZone(new Date(candles[i][0])),
+          action: 'BUY LONG position entered',
+          price: entryPrice,
+          profit: 0,
+          totalBalance: currentBalance,
+        });
+
+        stopLossPercent = (lastBB.middle - lastBB.lower) / lastClose;
+        takeProfitPercent = stopLossPercent * 2;
+
+        continue;
+      } else if (sellCheck) {
+        if (position === 'LONG') {
+          results.push(
+            closePosition(
+              lastClose,
+              convertToKoreanTimeZone(new Date(candles[i][0]))
+            )
+          );
+        }
+
+        // 숏 포지션 진입
+        position = 'SHORT';
+        entryPrice = lastClose;
+        results.push({
+          date: convertToKoreanTimeZone(new Date(candles[i][0])),
+          action: 'SELL SHORT position entered',
+          price: entryPrice,
+          profit: 0,
+          totalBalance: currentBalance,
+        });
+
+        stopLossPercent = (lastBB.upper - lastBB.middle) / lastClose;
+        takeProfitPercent = stopLossPercent * 2;
+
         continue;
       }
 
-      if (position === null) {
-        if (lastRSI < rsiBuyThreshold && lastClose < lastBB.lower) {
-          buyCheck = true;
-          cooltimeMilliseconds = 15 * 60 * 1000; // 15분
-          continue;
-        } else if (lastRSI > rsiSellThreshold && lastClose > lastBB.upper) {
-          sellCheck = true;
-          cooltimeMilliseconds = 15 * 60 * 1000; // 15분
-          continue;
-        }
-      }
-
-      if (buyCheck && lastClose > lastBB.lower && lastLow > lastBB.lower) {
-        const potentialProfit = ((lastClose - entryPrice) / entryPrice) * 100;
-        if (potentialProfit > 1.5) {
-          if (position === 'SHORT') {
-            const profit =
-              (entryPrice - lastClose) * (currentBalance / entryPrice);
-            const profitPercent = (profit / currentBalance) * 100;
-
-            if (profit >= 0) {
-              // 숏 포지션 종료
-              currentBalance += profit;
-              lastTradeTime = currentTime;
-              results.push({
-                date: new Date(candles[i][0]).toISOString(),
-                action: 'BUY SHORT position closed-1',
-                price: lastClose,
-                profit: profit,
-                profitPercent: profitPercent,
-                totalBalance: currentBalance,
-              });
-              position = null;
-            } else {
-              continue;
-            }
-          }
-
-          // 롱 포지션 진입
-          position = 'LONG';
-          entryPrice = lastClose;
-          lastTradeTime = currentTime;
-          buyCheck = false;
-          results.push({
-            date: new Date(candles[i][0]).toISOString(),
-            action: 'BUY LONG position entered',
-            price: entryPrice,
-            profit: 0,
-            totalBalance: currentBalance,
-          });
-          continue;
-        }
-      } else if (
-        sellCheck &&
-        lastClose < lastBB.upper &&
-        lastHigh < lastBB.upper
-      ) {
-        const potentialProfit = ((entryPrice - lastClose) / entryPrice) * 100;
-        if (potentialProfit > 1.5) {
-          if (position === 'LONG') {
-            const profit =
-              (lastClose - entryPrice) * (currentBalance / entryPrice);
-            const profitPercent = (profit / currentBalance) * 100;
-
-            if (profit >= 0) {
-              // 롱 포지션 종료
-              currentBalance += profit;
-              lastTradeTime = currentTime;
-              results.push({
-                date: new Date(candles[i][0]).toISOString(),
-                action: 'SELL LONG position closed-1',
-                price: lastClose,
-                profit: profit,
-                profitPercent: profitPercent,
-                totalBalance: currentBalance,
-              });
-              position = null;
-            } else {
-              continue;
-            }
-          }
-
-          // 숏 포지션 진입
-          position = 'SHORT';
-          entryPrice = lastClose;
-          lastTradeTime = currentTime;
-          sellCheck = false;
-          results.push({
-            date: new Date(candles[i][0]).toISOString(),
-            action: 'SELL SHORT position entered',
-            price: entryPrice,
-            profit: 0,
-            totalBalance: currentBalance,
-          });
-          continue;
-        }
-      }
-
+      //손절,익절 체크
       if (position === 'LONG') {
         const profit = (lastClose - entryPrice) * (currentBalance / entryPrice);
         const profitPercent = (profit / currentBalance) * 100;
@@ -175,10 +211,9 @@ async function backtest(
         ) {
           // 롱 포지션 종료
           currentBalance += profit;
-          lastTradeTime = currentTime;
           results.push({
-            date: new Date(candles[i][0]).toISOString(),
-            action: 'SELL LONG position closed',
+            date: convertToKoreanTimeZone(new Date(candles[i][0])),
+            action: 'SELL LONG position closed-2',
             price: lastClose,
             profit: profit,
             profitPercent: profitPercent,
@@ -196,10 +231,9 @@ async function backtest(
         ) {
           // 숏 포지션 종료
           currentBalance += profit;
-          lastTradeTime = currentTime;
           results.push({
-            date: new Date(candles[i][0]).toISOString(),
-            action: 'BUY SHORT position closed',
+            date: convertToKoreanTimeZone(new Date(candles[i][0])),
+            action: 'BUY SHORT position closed-2',
             price: lastClose,
             profit: profit,
             profitPercent: profitPercent,
@@ -211,13 +245,7 @@ async function backtest(
     }
 
     // if (results.length > 0 && results[results.length - 1].totalBalance > 1000) {
-    console.log(
-      results[results.length - 1].totalBalance,
-      stopLossPercent,
-      takeProfitPercent,
-      rsiBuyThreshold,
-      rsiSellThreshold
-    );
+    console.log(results[results.length - 1].totalBalance);
     // }
 
     if (saveCSV) {
@@ -247,26 +275,9 @@ async function backtest(
   }
 }
 
-// 지표 계산
-async function calculateIndicators(candles) {
-  const closes = candles.map((c) => parseFloat(c[4]));
-  const highs = candles.map((c) => parseFloat(c[2]));
-  const lows = candles.map((c) => parseFloat(c[3]));
-  const rsiValues = RSI.calculate({ period: 14, values: closes });
-  const bbValues = BollingerBands.calculate({
-    period: 22,
-    stdDev: 2.2,
-    values: closes,
-  });
-
-  return {
-    lastRSI: rsiValues[rsiValues.length - 1],
-    lastBB: bbValues[bbValues.length - 1],
-    lastClose: closes[closes.length - 1],
-    lastHigh: highs[highs.length - 1],
-    lastLow: lows[lows.length - 1],
-  };
-}
+const convertToKoreanTimeZone = (date) => {
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000).toISOString();
+};
 
 // 캔들스틱 데이터 가져오기
 async function fetchCandlestickData(symbol, interval, startTime, endTime) {
@@ -311,12 +322,8 @@ async function onceBacktest() {
     //'ETHUSDT',
     //'XRPUSDT',
     '15m',
-    '2021-01-01',
+    '2024-06-01',
     '2024-07-25',
-    0.5, // 1.5% 손절
-    2, // 3% 익절
-    40,
-    66,
     true
   );
   console.log(finalBalance);
@@ -418,7 +425,7 @@ async function optimizeParameters() {
 
 // 백테스트 실행
 // optimizeParameters();
-//onceBacktest();
+// onceBacktest();
 
 exports.backtest = {
   backtest,
