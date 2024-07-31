@@ -25,7 +25,7 @@ const fetchCandlestickData = async (binance, symbol, interval, limit) => {
     const candles = await binance.futuresCandles(symbol, interval, {
       limit: limit,
     });
-    return await calculateIndicators(candles);
+    return candles;
   } catch (error) {
     console.error(`Failed to fetch candlestick data for ${symbol}:`, error);
     throw error;
@@ -33,7 +33,7 @@ const fetchCandlestickData = async (binance, symbol, interval, limit) => {
 };
 
 // 기술적 지표 계산 (RSI, 볼린저 밴드)
-const calculateIndicators = (candles, bbPeriod = 22, bbStd = 2.2) => {
+const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
   try {
     const closes = candles.map((c) => parseFloat(c[4]));
     const highs = candles.map((c) => parseFloat(c[2]));
@@ -45,6 +45,7 @@ const calculateIndicators = (candles, bbPeriod = 22, bbStd = 2.2) => {
       values: closes,
     });
     const sma50 = SMA.calculate({ period: 50, values: closes });
+    const sma200 = SMA.calculate({ period: 200, values: closes });
     const StochasticRSIs = StochasticRSI.calculate({
       values: closes,
       rsiPeriod: 14,
@@ -60,6 +61,7 @@ const calculateIndicators = (candles, bbPeriod = 22, bbStd = 2.2) => {
       lastLow: lows[closes.length - 1],
       sma50: sma50[sma50.length - 1],
       stochasticRSI: StochasticRSIs[StochasticRSIs.length - 1],
+      sma200: sma200[sma200.length - 1],
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
@@ -142,9 +144,39 @@ const sendUSDTBalance = async (binance, save = false) => {
   }
 };
 
+//현재 포지션 정보 가져오기
+const getPositionData = async (position, binance) => {
+  const symbol = position.symbol;
+  const positionAmt = parseFloat(position.positionAmt);
+  const markPrice = await getCurrentPrice(symbol, binance);
+  const profitPercent =
+    (position.unrealizedProfit / position.initialMargin) * 100;
+
+  return {
+    symbol,
+    positionAmt,
+    markPrice,
+    profitPercent,
+    unrealizedProfit: parseFloat(position.unrealizedProfit),
+  };
+};
+
+// 현재 가격 가져오기
+async function getCurrentPrice(symbol, binance) {
+  try {
+    const prices = await binance.futuresPrices();
+    return parseFloat(prices[symbol]);
+  } catch (error) {
+    console.error(`Failed to get current price for ${symbol}:`, error);
+    throw error;
+  }
+}
+
 exports.binance_common = {
   getFutureAccountInfo,
   fetchCandlestickData,
   sendUSDTBalance,
   calculateIndicators,
+  getPositionData,
+  getCurrentPrice,
 };

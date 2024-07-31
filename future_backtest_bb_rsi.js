@@ -17,7 +17,6 @@ async function backtest(
   interval = '15m',
   start = '2024-01-01',
   end = '2024-06-25',
-  stopLossPercent,
   saveCSV = false
 ) {
   let initialCapital = 1000;
@@ -25,8 +24,10 @@ async function backtest(
   let position = null; // 현재 포지션 ('LONG', 'SHORT', 또는 null)
   let entryPrice = 0;
   let results = [];
-  //let stopLossPercent = 1.5;
-  let takeProfitPercent = 0;
+  let stopLossPrice = 0;
+  let takeProfitPrice = 0;
+  let buySignal = false;
+  let sellSignal = false;
 
   try {
     const dataFilePath = path.resolve(
@@ -35,6 +36,7 @@ async function backtest(
     );
     let candles;
 
+    // 캔들 데이터 생성 또는 가져오기
     if (fs.existsSync(dataFilePath)) {
       const data = fs.readFileSync(dataFilePath);
       candles = JSON.parse(data);
@@ -51,6 +53,7 @@ async function backtest(
       fs.writeFileSync(dataFilePath, JSON.stringify(candles));
     }
 
+    //포지션 종료
     const closePosition = (lastClose, closedDate) => {
       let result = {};
       if (position === 'SHORT') {
@@ -88,123 +91,139 @@ async function backtest(
       return result;
     };
 
-    const getBuyCheck = (
-      position,
-      lastClose,
-      lastLow,
-      lastBB,
-      stochasticRSI
+    // 포지션 진입 시 손절가와 익절가 설정 로직 추가
+    const calculateStopLossTakeProfit = (
+      positionType,
+      recentCandles,
+      entryPrice
     ) => {
+      let stopLoss = 0;
+      let takeProfit = 0;
+
+      if (positionType === 'LONG') {
+        const lowestLow = Math.min(...recentCandles.map((candle) => candle[3])); // 최근 5개 중 가장 낮은 값
+        stopLoss = lowestLow;
+        takeProfit = entryPrice + 3 * (entryPrice - stopLoss);
+      } else if (positionType === 'SHORT') {
+        const highestHigh = Math.max(
+          ...recentCandles.map((candle) => candle[2])
+        ); // 최근 5개 중 가장 높은 값
+        stopLoss = highestHigh;
+        takeProfit = entryPrice - 3 * (stopLoss - entryPrice);
+      }
+
+      return { stopLoss, takeProfit };
+    };
+
+    const getBuyCheck = (lastBB, lastClose, lastLow, lastHigh, lastRSI) => {
       if (position === 'LONG') return false;
 
-      if (
-        lastBB.lower > lastClose &&
-        lastBB.lower > lastLow &&
-        stochasticRSI.stochRSI < 5
-      ) {
-        return true;
+      if (buySignal) {
+        if (lastClose > lastBB.lower) {
+          buySignal;
+          return true;
+        } else {
+          return false;
+        }
+      }
+
+      if (lastBB.lower > lastLow && lastRSI < 30) {
+        buySignal = true;
       }
 
       return false;
     };
 
-    const getSellCheck = (
-      position,
-      lastClose,
-      lastHigh,
-      lastBB,
-      stochasticRSI
-    ) => {
+    const getSellCheck = (lastBB, lastClose, lastLow, lastHigh, lastRSI) => {
       if (position === 'SHORT') return false;
 
-      if (
-        lastBB.upper < lastClose &&
-        lastBB.upper < lastHigh &&
-        stochasticRSI.stochRSI > 95
-      ) {
-        return true;
+      if (sellSignal) {
+        if (lastClose < lastBB.upper) {
+          sellSignal;
+          return true;
+        } else {
+          return false;
+        }
       }
 
-      return false;
+      if (lastBB.upper < lastHigh && lastRSI > 70) {
+        sellSignal = true;
+      }
     };
 
     for (let i = 50; i < candles.length; i++) {
       const candleSlice = candles.slice(i - 50, i);
-      const indicators = calculateIndicators(candleSlice, 20, 3);
-      const { lastBB, stochasticRSI, lastClose, lastLow, lastHigh } =
-        indicators;
+      const indicators = calculateIndicators(candleSlice, 20, 2);
+      const { lastBB, lastClose, lastLow, lastHigh, lastRSI } = indicators;
 
       const buyCheck = getBuyCheck(
-        position,
+        lastBB,
         lastClose,
         lastLow,
-        lastBB,
-        stochasticRSI
-      );
-      const sellCheck = getSellCheck(
-        position,
-        lastClose,
         lastHigh,
-        lastBB,
-        stochasticRSI
+        lastRSI
       );
 
-      if (buyCheck) {
-        if (position === 'SHORT') {
-          results.push(
-            closePosition(
-              lastClose,
-              convertToKoreanTimeZone(new Date(candles[i][0]))
-            )
+      const sellCheck = getSellCheck(
+        lastBB,
+        lastClose,
+        lastLow,
+        lastHigh,
+        lastRSI
+      );
+
+      if (position === null) {
+        if (buyCheck) {
+          // 롱 포지션 진입
+          position = 'LONG';
+          entryPrice = lastClose;
+          const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
+            'LONG',
+            candles.slice(i - 20, i),
+            entryPrice
           );
-        }
+          stopLossPrice = stopLoss;
+          takeProfitPrice = takeProfit;
+          results.push({
+            date: convertToKoreanTimeZone(new Date(candles[i][0])),
+            action: 'BUY LONG position entered',
+            price: entryPrice,
+            profit: 0,
+            totalBalance: currentBalance,
+          });
 
-        // 롱 포지션 진입
-        position = 'LONG';
-        entryPrice = lastClose;
-        results.push({
-          date: convertToKoreanTimeZone(new Date(candles[i][0])),
-          action: 'BUY LONG position entered',
-          price: entryPrice,
-          profit: 0,
-          totalBalance: currentBalance,
-        });
-
-        continue;
-      } else if (sellCheck) {
-        if (position === 'LONG') {
-          results.push(
-            closePosition(
-              lastClose,
-              convertToKoreanTimeZone(new Date(candles[i][0]))
-            )
+          continue;
+        } else if (sellCheck) {
+          // 숏 포지션 진입
+          position = 'SHORT';
+          entryPrice = lastClose;
+          const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
+            'SHORT',
+            candles.slice(i - 20, i),
+            entryPrice
           );
+
+          stopLossPrice = stopLoss;
+          takeProfitPrice = takeProfit;
+
+          results.push({
+            date: convertToKoreanTimeZone(new Date(candles[i][0])),
+            action: 'SELL SHORT position entered',
+            price: entryPrice,
+            profit: 0,
+            totalBalance: currentBalance,
+          });
+
+          continue;
         }
-
-        // 숏 포지션 진입
-        position = 'SHORT';
-        entryPrice = lastClose;
-        results.push({
-          date: convertToKoreanTimeZone(new Date(candles[i][0])),
-          action: 'SELL SHORT position entered',
-          price: entryPrice,
-          profit: 0,
-          totalBalance: currentBalance,
-        });
-
-        continue;
       }
 
       //손절,익절 체크
       if (position === 'LONG') {
         const profit = (lastClose - entryPrice) * (currentBalance / entryPrice);
         const profitPercent = (profit / currentBalance) * 100;
-        const closedCheck = lastBB.upper < lastHigh;
 
-        if (
-          profit <= -(stopLossPercent / 100) * currentBalance ||
-          closedCheck
-        ) {
+        if (stopLossPrice > lastClose || takeProfitPrice < lastClose) {
           // 롱 포지션 종료
           currentBalance += profit;
           results.push({
@@ -220,12 +239,8 @@ async function backtest(
       } else if (position === 'SHORT') {
         const profit = (entryPrice - lastClose) * (currentBalance / entryPrice);
         const profitPercent = (profit / currentBalance) * 100;
-        const closedCheck = lastBB.lower > lastLow;
 
-        if (
-          profit <= -(stopLossPercent / 100) * currentBalance ||
-          closedCheck
-        ) {
+        if (stopLossPrice < lastClose || takeProfitPrice > lastClose) {
           // 숏 포지션 종료
           currentBalance += profit;
           results.push({
@@ -319,9 +334,8 @@ async function onceBacktest() {
     //'ETHUSDT',
     //'XRPUSDT',
     '15m',
-    '2024-06-01',
+    '2021-01-01',
     '2024-07-25',
-    2.4,
     true
   );
   console.log(finalBalance);
@@ -335,7 +349,8 @@ async function optimizeParameters() {
   const end = '2024-07-25';
 
   // 범위와 간격 설정
-  const stopLossRange = { min: 1, max: 5, step: 0.2 };
+  const stopLossRange = { min: 1, max: 3, step: 0.2 };
+  const takeProfitRange = { min: 1.5, max: 4.5, step: 0.2 };
 
   let bestResult = {
     stopLossPercent: null,
@@ -352,24 +367,36 @@ async function optimizeParameters() {
   };
 
   const stopLossOptions = generateRange(stopLossRange);
+  const takeProfitOptions = generateRange(takeProfitRange);
 
   for (let stopLoss of stopLossOptions) {
-    const finalBalance = await backtest(symbol, interval, start, end, stopLoss);
+    for (let takeProfit of takeProfitOptions) {
+      const finalBalance = await backtest(
+        symbol,
+        interval,
+        start,
+        end,
+        stopLoss,
+        takeProfit
+      );
 
-    console.log(
-      `Testing with stopLoss: ${stopLoss}%, finalBalance: ${finalBalance}`
-    );
+      console.log(
+        `Testing with stopLoss: ${stopLoss}%, takeProfit: ${takeProfit}, finalBalance: ${finalBalance}`
+      );
 
-    results.push({
-      stopLossPercent: stopLoss,
-      finalBalance: finalBalance,
-    });
-
-    if (finalBalance > bestResult.finalBalance) {
-      bestResult = {
+      results.push({
         stopLossPercent: stopLoss,
+        takeProfitPercent: takeProfit,
         finalBalance: finalBalance,
-      };
+      });
+
+      if (finalBalance > bestResult.finalBalance) {
+        bestResult = {
+          stopLossPercent: stopLoss,
+          takeProfitPercent: takeProfit,
+          finalBalance: finalBalance,
+        };
+      }
     }
   }
 
@@ -377,6 +404,7 @@ async function optimizeParameters() {
     path: `future_backtest_optimizeParameters_${Date.now().toString()}.csv`,
     header: [
       { id: 'stopLossPercent', title: 'STOP_LOSS' },
+      { id: 'takeProfitPercent', title: 'TAKE_PROFIT' },
       { id: 'finalBalance', title: 'FINAL_BALANCE' },
     ],
   });
