@@ -226,12 +226,6 @@ async function trade(symbol, interval = '15m') {
       isInitDB = true;
     }
 
-    const savedCoinData = await coinDB.getCurrentCoin();
-    if (savedCoinData) {
-      stopLossPrice = savedCoinData.stopLossPrice;
-      takeProfitPrice = savedCoinData.takeProfitPrice;
-    }
-
     const setLeverage = 1;
     await binance.futuresLeverage(symbol, setLeverage);
 
@@ -249,6 +243,12 @@ async function trade(symbol, interval = '15m') {
     if (positions.length > 0) {
       const pos = positions[0];
       positionAmt = parseFloat(pos.positionAmt); // 0 보다 크면 LONG, 0보다 작으면 SHORT
+
+      const savedCoinData = await coinDB.getCurrentCoin();
+      if (savedCoinData) {
+        stopLossPrice = savedCoinData.stopLossPrice;
+        takeProfitPrice = savedCoinData.takeProfitPrice;
+      }
     }
 
     const buyCheck = getBuyCheck(lastBB, lastLow, lastRSI, positionAmt);
