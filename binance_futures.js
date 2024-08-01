@@ -153,12 +153,12 @@ async function checkStopLoss() {
 }
 
 //매수 체크 로직
-const getBuyCheck = (lastBB, lastClose, lastLow, lastRSI, positionAmt) => {
+const getBuyCheck = (lastBB, lastLow, lastRSI, positionAmt) => {
   if (positionAmt > 0) return false;
 
   if (buySignal) {
-    if (lastClose > lastBB.lower) {
-      buySignal;
+    if (lastLow > lastBB.lower) {
+      buySignal = false;
       return true;
     } else {
       return false;
@@ -173,12 +173,12 @@ const getBuyCheck = (lastBB, lastClose, lastLow, lastRSI, positionAmt) => {
 };
 
 //매도 체크 로직
-const getSellCheck = (lastBB, lastClose, lastHigh, lastRSI, positionAmt) => {
+const getSellCheck = (lastBB, lastHigh, lastRSI, positionAmt) => {
   if (positionAmt < 0) return false;
 
   if (sellSignal) {
-    if (lastClose < lastBB.upper) {
-      sellSignal;
+    if (lastHigh < lastBB.upper) {
+      sellSignal = false;
       return true;
     } else {
       return false;
@@ -201,14 +201,16 @@ const calculateStopLossTakeProfit = (
   let stopLoss = 0;
   let takeProfit = 0;
 
+  const minimumStopLoss = entryPrice * (positionType === 'LONG' ? 0.99 : 1.01); // 최소 손절가 (entryPrice의 1% 이하로 설정되지 않도록)
+
   if (positionType === 'LONG') {
     const lowestLow = Math.min(...recentCandles.map((candle) => candle[3])); // 최근 5개 중 가장 낮은 값
-    stopLoss = lowestLow;
-    takeProfit = entryPrice + 2.5 * (entryPrice - stopLoss);
+    stopLoss = Math.max(lowestLow, minimumStopLoss);
+    takeProfit = entryPrice + 2 * (entryPrice - stopLoss);
   } else if (positionType === 'SHORT') {
     const highestHigh = Math.max(...recentCandles.map((candle) => candle[2])); // 최근 5개 중 가장 높은 값
-    stopLoss = highestHigh;
-    takeProfit = entryPrice - 2.5 * (stopLoss - entryPrice);
+    stopLoss = Math.min(highestHigh, minimumStopLoss); // 최소 손절가 적용
+    takeProfit = entryPrice - 2 * (stopLoss - entryPrice);
   }
 
   return { stopLoss, takeProfit };
@@ -249,21 +251,9 @@ async function trade(symbol, interval = '15m') {
       positionAmt = parseFloat(pos.positionAmt); // 0 보다 크면 LONG, 0보다 작으면 SHORT
     }
 
-    const buyCheck = getBuyCheck(
-      lastBB,
-      lastClose,
-      lastLow,
-      lastRSI,
-      positionAmt
-    );
+    const buyCheck = getBuyCheck(lastBB, lastLow, lastRSI, positionAmt);
 
-    const sellCheck = getSellCheck(
-      lastBB,
-      lastClose,
-      lastHigh,
-      lastRSI,
-      positionAmt
-    );
+    const sellCheck = getSellCheck(lastBB, lastHigh, lastRSI, positionAmt);
 
     try {
       if (positions.length === 0) {
