@@ -205,11 +205,11 @@ const calculateStopLossTakeProfit = (
 
   if (positionType === 'LONG') {
     const lowestLow = Math.min(...recentCandles.map((candle) => candle[3])); // 최근 5개 중 가장 낮은 값
-    stopLoss = Math.max(lowestLow, minimumStopLoss);
+    stopLoss = Math.min(lowestLow, minimumStopLoss);
     takeProfit = entryPrice + 2 * (entryPrice - stopLoss);
   } else if (positionType === 'SHORT') {
     const highestHigh = Math.max(...recentCandles.map((candle) => candle[2])); // 최근 5개 중 가장 높은 값
-    stopLoss = Math.min(highestHigh, minimumStopLoss); // 최소 손절가 적용
+    stopLoss = Math.max(highestHigh, minimumStopLoss); // 최소 손절가 적용
     takeProfit = entryPrice - 2 * (stopLoss - entryPrice);
   }
 
