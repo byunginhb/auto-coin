@@ -271,7 +271,7 @@ async function trade(symbol, interval = '15m') {
           // 롱 포지션 진입
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'LONG',
-            candles.slice(i - 20, i),
+            candles.slice(-20),
             currentPrice
           );
           stopLossPrice = stopLoss;
@@ -293,7 +293,7 @@ takeProfitPrice : ${takeProfitPrice}
           // 숏 포지션 진입
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'SHORT',
-            candles.slice(i - 20, i),
+            candles.slice(-20),
             currentPrice
           );
           stopLossPrice = stopLoss;
