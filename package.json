@@ -19,6 +19,8 @@
     "node-binance-api": "^0.13.1",
     "node-cron": "^3.0.3",
     "node-telegram-bot-api": "^0.65.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "technicalindicators": "^3.1.0",
     "tulind": "^0.8.20"
   }

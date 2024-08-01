@@ -1,5 +1,7 @@
 require('dotenv').config();
 const Binance = require('node-binance-api');
+const coinDB = require('./db').coinDB;
+
 const {
   getFutureAccountInfo,
   fetchCandlestickData,
@@ -22,8 +24,8 @@ const rsiBuyThreshold = 30; // RSI 과매도 조건
 const rsiSellThreshold = 70; // RSI 과매수 조건
 
 // 손절, 손익 조건
-let stopLossPercent = 1.5; // 손절 퍼센트
-let takeProfitPercent = 3; // 익절 퍼센트
+let stopLossPrice = 0; // 손절 퍼센트
+let takeProfitPrice = 0; // 익절 퍼센트
 
 let intervalHandler = null;
 let telegramBot = null;
@@ -31,6 +33,8 @@ let leverage = 1;
 
 let buySignal = false;
 let sellSignal = false;
+
+let isInitDB = false;
 
 // 텔레그램 봇 설정
 function setTelegramBot(bot) {
@@ -53,13 +57,17 @@ const sendPositionData = async () => {
     }
 
     for (let pos of positions) {
-      const { symbol, positionAmt, profitPercent, unrealizedProfit } =
-        await getPositionData(pos, binance);
+      const { symbol, positionAmt, unrealizedProfit } = await getPositionData(
+        pos,
+        binance
+      );
 
       sendMessage(
         `${symbol} 포지션 정보
 포지션: ${positionAmt > 0 ? '롱' : '숏'}, 
-실현손익: ${parseFloat(unrealizedProfit).toFixed(2)}USDT`
+실현손익: ${parseFloat(unrealizedProfit).toFixed(2)}USDT
+stopLossPrice: ${stopLossPrice},
+takeProfitPrice: ${takeProfitPrice}`
       );
     }
   } catch (error) {
@@ -124,14 +132,11 @@ async function checkStopLoss() {
     }
 
     for (let pos of positions) {
-      const { symbol, positionAmt, profitPercent, unrealizedProfit } =
+      const { symbol, positionAmt, unrealizedProfit, markPrice } =
         await getPositionData(pos, binance);
 
       // 손절 로직
-      if (
-        profitPercent <= -stopLossPercent ||
-        profitPercent >= takeProfitPercent
-      ) {
+      if (markPrice <= stopLossPrice || markPrice >= takeProfitPrice) {
         await closePosition(symbol, positionAmt);
         await sendUSDTBalance();
 
@@ -199,11 +204,11 @@ const calculateStopLossTakeProfit = (
   if (positionType === 'LONG') {
     const lowestLow = Math.min(...recentCandles.map((candle) => candle[3])); // 최근 5개 중 가장 낮은 값
     stopLoss = lowestLow;
-    takeProfit = entryPrice + 3 * (entryPrice - stopLoss);
+    takeProfit = entryPrice + 2.5 * (entryPrice - stopLoss);
   } else if (positionType === 'SHORT') {
     const highestHigh = Math.max(...recentCandles.map((candle) => candle[2])); // 최근 5개 중 가장 높은 값
     stopLoss = highestHigh;
-    takeProfit = entryPrice - 3 * (stopLoss - entryPrice);
+    takeProfit = entryPrice - 2.5 * (stopLoss - entryPrice);
   }
 
   return { stopLoss, takeProfit };
@@ -214,6 +219,17 @@ const calculateStopLossTakeProfit = (
 // 트레이딩 함수
 async function trade(symbol, interval = '15m') {
   try {
+    if (!isInitDB) {
+      await coinDB.setup();
+      isInitDB = true;
+    }
+
+    const savedCoinData = await coinDB.getCurrentCoin();
+    if (savedCoinData) {
+      stopLossPrice = savedCoinData.stopLossPrice;
+      takeProfitPrice = savedCoinData.takeProfitPrice;
+    }
+
     const setLeverage = 1;
     await binance.futuresLeverage(symbol, setLeverage);
 
@@ -263,12 +279,16 @@ async function trade(symbol, interval = '15m') {
 
           await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
           sendMessage(`롱포지션 조건 충족.
-          ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
-          선물 RSI: ${lastRSI},
-          마지막 금액: ${currentPrice},
-          볼린저 하단: ${lastBB.lower.toFixed(3)},
-          볼린저 상단: ${lastBB.upper.toFixed(3)}
+${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
+선물 RSI: ${lastRSI},
+마지막 금액: ${currentPrice},
+볼린저 하단: ${lastBB.lower.toFixed(3)},
+볼린저 상단: ${lastBB.upper.toFixed(3)},
+stopLossPrice : ${stopLossPrice},
+takeProfitPrice : ${takeProfitPrice}
           `);
+
+          await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         } else if (sellCheck) {
           // 숏 포지션 진입
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
@@ -281,12 +301,16 @@ async function trade(symbol, interval = '15m') {
 
           await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
           sendMessage(`숏포지션 조건 충족.
-          ${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행.
-          선물 RSI: ${lastRSI},
-          마지막 금액: ${currentPrice},
-          볼린저 하단: ${lastBB.lower.toFixed(3)},
-          볼린저 상단: ${lastBB.upper.toFixed(3)}
+${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행.
+선물 RSI: ${lastRSI},
+마지막 금액: ${currentPrice},
+볼린저 하단: ${lastBB.lower.toFixed(3)},
+볼린저 상단: ${lastBB.upper.toFixed(3)},
+stopLossPrice : ${stopLossPrice},
+takeProfitPrice : ${takeProfitPrice}
           `);
+
+          await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         }
       }
     } catch (error) {
