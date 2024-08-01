@@ -142,7 +142,10 @@ async function checkStopLoss() {
 
         sendMessage(
           `${symbol} 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT`
+실현손익: ${unrealizedProfit.toFixed(2)}USDT
+현재가 : ${markPrice},
+stopLossPrice: ${stopLossPrice},
+takeProfitPrice: ${takeProfitPrice}`
         );
       }
     }
@@ -302,12 +305,12 @@ takeProfitPrice : ${takeProfitPrice}
 
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         }
+      } else {
+        await checkStopLoss();
       }
     } catch (error) {
       sendMessage(`포지션 진입시 에러 발생: ${error.message}`);
     }
-
-    await checkStopLoss();
   } catch (error) {
     console.error('Trade execution start failed:', error);
     sendMessage(`선물 트레이딩 실패: ${error.message}`);
