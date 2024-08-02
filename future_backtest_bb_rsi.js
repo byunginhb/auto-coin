@@ -100,76 +100,82 @@ async function backtest(
       let stopLoss = 0;
       let takeProfit = 0;
 
+      const minimumStopLoss =
+        entryPrice * (positionType === 'LONG' ? 0.985 : 1.015);
+      const maximumStopLoss =
+        entryPrice * (positionType === 'LONG' ? 0.97 : 1.03);
+
       if (positionType === 'LONG') {
-        const lowestLow = Math.min(...recentCandles.map((candle) => candle[3])); // 최근 5개 중 가장 낮은 값
-        stopLoss = lowestLow;
-        takeProfit = entryPrice + 3 * (entryPrice - stopLoss);
+        const lowestLow = Math.min(...recentCandles.map((candle) => candle[3]));
+        stopLoss = Math.max(
+          Math.min(lowestLow, minimumStopLoss),
+          maximumStopLoss
+        );
+        takeProfit = entryPrice + 2 * (entryPrice - stopLoss);
       } else if (positionType === 'SHORT') {
         const highestHigh = Math.max(
           ...recentCandles.map((candle) => candle[2])
-        ); // 최근 5개 중 가장 높은 값
-        stopLoss = highestHigh;
-        takeProfit = entryPrice - 3 * (stopLoss - entryPrice);
+        );
+        stopLoss = Math.min(
+          Math.max(highestHigh, minimumStopLoss),
+          maximumStopLoss
+        );
+        takeProfit = entryPrice - 2 * (stopLoss - entryPrice);
       }
 
       return { stopLoss, takeProfit };
     };
 
-    const getBuyCheck = (lastBB, lastClose, lastLow, lastHigh, lastRSI) => {
+    const getBuyCheck = (lastBB, lastLow, lastRSI, lastClose, sma120) => {
       if (position === 'LONG') return false;
 
       if (buySignal) {
-        if (lastClose > lastBB.lower) {
-          buySignal;
+        if (lastLow > lastBB.lower) {
+          buySignal = false;
           return true;
         } else {
           return false;
         }
       }
 
-      if (lastBB.lower > lastLow && lastRSI < 30) {
+      if (lastBB.lower > lastLow && lastRSI < 30 && lastClose > sma120) {
         buySignal = true;
       }
 
       return false;
     };
 
-    const getSellCheck = (lastBB, lastClose, lastLow, lastHigh, lastRSI) => {
+    const getSellCheck = (lastBB, lastHigh, lastRSI, lastClose, sma120) => {
       if (position === 'SHORT') return false;
 
       if (sellSignal) {
-        if (lastClose < lastBB.upper) {
-          sellSignal;
+        if (lastHigh < lastBB.upper) {
+          sellSignal = false;
           return true;
         } else {
           return false;
         }
       }
 
-      if (lastBB.upper < lastHigh && lastRSI > 70) {
+      if (lastBB.upper < lastHigh && lastRSI > 70 && lastClose < sma120) {
         sellSignal = true;
       }
     };
 
-    for (let i = 50; i < candles.length; i++) {
-      const candleSlice = candles.slice(i - 50, i);
+    for (let i = 120; i < candles.length; i++) {
+      const candleSlice = candles.slice(i - 120, i);
       const indicators = calculateIndicators(candleSlice, 20, 2);
-      const { lastBB, lastClose, lastLow, lastHigh, lastRSI } = indicators;
+      const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma120 } =
+        indicators;
 
-      const buyCheck = getBuyCheck(
-        lastBB,
-        lastClose,
-        lastLow,
-        lastHigh,
-        lastRSI
-      );
+      const buyCheck = getBuyCheck(lastBB, lastLow, lastRSI, lastClose, sma120);
 
       const sellCheck = getSellCheck(
         lastBB,
-        lastClose,
-        lastLow,
         lastHigh,
-        lastRSI
+        lastRSI,
+        lastClose,
+        sma120
       );
 
       if (position === null) {
@@ -418,7 +424,7 @@ async function optimizeParameters() {
 
 // 백테스트 실행
 // optimizeParameters();
-// onceBacktest();
+onceBacktest();
 
 exports.backtest = {
   backtest,

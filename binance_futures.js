@@ -168,7 +168,11 @@ const getBuyCheck = (lastBB, lastLow, lastRSI, positionAmt) => {
     }
   }
 
-  if (lastBB.lower > lastLow && lastRSI < rsiBuyThreshold) {
+  if (
+    lastBB.lower > lastLow &&
+    lastRSI < rsiBuyThreshold &&
+    lastClose > sma120
+  ) {
     buySignal = true;
   }
 
@@ -188,7 +192,11 @@ const getSellCheck = (lastBB, lastHigh, lastRSI, positionAmt) => {
     }
   }
 
-  if (lastBB.upper < lastHigh && lastRSI > rsiSellThreshold) {
+  if (
+    lastBB.upper < lastHigh &&
+    lastRSI > rsiSellThreshold &&
+    lastClose < sma120
+  ) {
     sellSignal = true;
   }
 
@@ -204,15 +212,20 @@ const calculateStopLossTakeProfit = (
   let stopLoss = 0;
   let takeProfit = 0;
 
-  const minimumStopLoss = entryPrice * (positionType === 'LONG' ? 0.99 : 1.01); // 최소 손절가 (entryPrice의 1% 이하로 설정되지 않도록)
+  const minimumStopLoss =
+    entryPrice * (positionType === 'LONG' ? 0.985 : 1.015);
+  const maximumStopLoss = entryPrice * (positionType === 'LONG' ? 0.97 : 1.03);
 
   if (positionType === 'LONG') {
-    const lowestLow = Math.min(...recentCandles.map((candle) => candle[3])); // 최근 5개 중 가장 낮은 값
-    stopLoss = Math.min(lowestLow, minimumStopLoss);
+    const lowestLow = Math.min(...recentCandles.map((candle) => candle[3]));
+    stopLoss = Math.max(Math.min(lowestLow, minimumStopLoss), maximumStopLoss);
     takeProfit = entryPrice + 2 * (entryPrice - stopLoss);
   } else if (positionType === 'SHORT') {
-    const highestHigh = Math.max(...recentCandles.map((candle) => candle[2])); // 최근 5개 중 가장 높은 값
-    stopLoss = Math.max(highestHigh, minimumStopLoss); // 최소 손절가 적용
+    const highestHigh = Math.max(...recentCandles.map((candle) => candle[2]));
+    stopLoss = Math.min(
+      Math.max(highestHigh, minimumStopLoss),
+      maximumStopLoss
+    );
     takeProfit = entryPrice - 2 * (stopLoss - entryPrice);
   }
 
@@ -233,7 +246,7 @@ async function trade(symbol, interval = '15m') {
     await binance.futuresLeverage(symbol, setLeverage);
 
     const candles = await fetchCandlestickData(binance, symbol, interval, 1000);
-    const { lastBB, lastClose, lastLow, lastHigh, lastRSI } =
+    const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma120 } =
       await calculateIndicators(candles);
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
@@ -254,9 +267,23 @@ async function trade(symbol, interval = '15m') {
       }
     }
 
-    const buyCheck = getBuyCheck(lastBB, lastLow, lastRSI, positionAmt);
+    const buyCheck = getBuyCheck(
+      lastBB,
+      lastLow,
+      lastRSI,
+      positionAmt,
+      lastClose,
+      sma120
+    );
 
-    const sellCheck = getSellCheck(lastBB, lastHigh, lastRSI, positionAmt);
+    const sellCheck = getSellCheck(
+      lastBB,
+      lastHigh,
+      lastRSI,
+      positionAmt,
+      lastClose,
+      sma120
+    );
 
     try {
       if (positions.length === 0) {
