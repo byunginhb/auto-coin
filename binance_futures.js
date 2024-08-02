@@ -156,7 +156,14 @@ takeProfitPrice: ${takeProfitPrice}`
 }
 
 //매수 체크 로직
-const getBuyCheck = (lastBB, lastLow, lastRSI, positionAmt) => {
+const getBuyCheck = (
+  lastBB,
+  lastLow,
+  lastRSI,
+  positionAmt,
+  lastClose,
+  sma120
+) => {
   if (positionAmt > 0) return false;
 
   if (buySignal) {
@@ -180,7 +187,14 @@ const getBuyCheck = (lastBB, lastLow, lastRSI, positionAmt) => {
 };
 
 //매도 체크 로직
-const getSellCheck = (lastBB, lastHigh, lastRSI, positionAmt) => {
+const getSellCheck = (
+  lastBB,
+  lastHigh,
+  lastRSI,
+  positionAmt,
+  lastClose,
+  sma120
+) => {
   if (positionAmt < 0) return false;
 
   if (sellSignal) {
