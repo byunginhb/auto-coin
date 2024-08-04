@@ -185,7 +185,7 @@ takeProfitPrice: ${takeProfitPrice}
           }
 `
         );
-        await currentCheck();
+        await currentCheck(symbol);
       }
     }
   } catch (error) {
@@ -285,7 +285,7 @@ const calculateStopLossTakeProfit = (
   return { stopLoss, takeProfit };
 };
 
-const currentCheck = async () => {
+const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
   const candles = await fetchCandlestickData(binance, symbol, interval, 1000);
   const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
     await calculateIndicators(candles);
@@ -318,17 +318,17 @@ async function trade(symbol, interval = '15m') {
     const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
       await calculateIndicators(candles);
 
-    console.log(
-      `lastBB.lower: ${lastBB.lower},
-lastBB.upper: ${lastBB.upper},
-lastClose: ${lastClose},
-lastLow: ${lastLow},
-lastLow: ${lastLow},
-lastHigh: ${lastHigh},
-lastRSI: ${lastRSI},
-sma160: ${sma160}
-`
-    );
+    //     console.log(
+    //       `lastBB.lower: ${lastBB.lower},
+    // lastBB.upper: ${lastBB.upper},
+    // lastClose: ${lastClose},
+    // lastLow: ${lastLow},
+    // lastLow: ${lastLow},
+    // lastHigh: ${lastHigh},
+    // lastRSI: ${lastRSI},
+    // sma160: ${sma160}
+    // `
+    //     );
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
