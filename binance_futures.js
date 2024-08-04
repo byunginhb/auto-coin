@@ -20,8 +20,8 @@ const binance = new Binance().options({
 });
 
 // 매수 및 매도 조건 설정
-const rsiBuyThreshold = 30; // RSI 과매도 조건
-const rsiSellThreshold = 70; // RSI 과매수 조건
+const rsiBuyThreshold = 40; // RSI 과매도 조건
+const rsiSellThreshold = 60; // RSI 과매수 조건
 
 // 손절, 손익 조건
 let stopLossPrice = 0; // 손절 퍼센트
@@ -33,6 +33,7 @@ let leverage = 1;
 
 let buySignal = false;
 let sellSignal = false;
+let closeSignal = false;
 
 let isInitDB = false;
 
@@ -121,8 +122,20 @@ async function closePosition(symbol, positionAmt) {
   }
 }
 
+//손절, 익절을 위한 볼린저 밴드 체크
+const checkBB = (positionAmt, lastBB, lastHigh, lastLow) => {
+  // 롱 포지션 일 때, 볼린저 밴드 상단 돌파 했는지 체크
+  // 숏 포지션 일 때, 볼린저 밴드 하단 돌파 했는지 체크
+  if (
+    (positionAmt > 0 && lastHigh > lastBB.upper) ||
+    (positionAmt < 0 && lastLow < lastBB.lower)
+  ) {
+    closeSignal = true;
+  }
+};
+
 // 포지션 모니터링 손절,익절 체크
-async function checkStopLoss() {
+async function checkStopLoss(lastBB, lastHigh, lastLow) {
   try {
     const { positions } = await getFutureAccountInfo(binance);
 
@@ -135,8 +148,26 @@ async function checkStopLoss() {
       const { symbol, positionAmt, unrealizedProfit, markPrice } =
         await getPositionData(pos, binance);
 
-      // 손절 로직
-      if (markPrice <= stopLossPrice || markPrice >= takeProfitPrice) {
+      // 손절, 익절 구간 체크
+      let closeCheck =
+        markPrice <= stopLossPrice || markPrice >= takeProfitPrice;
+
+      //추세 변환 체크
+      if (closeSignal) {
+        // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
+        if (
+          (positionAmt > 0 && lastHigh < lastBB.upper) ||
+          (positionAmt < 0 && lastLow > lastBB.lower)
+        ) {
+          closeCheck = true;
+          closeSignal = false;
+        }
+      } else {
+        // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
+        checkBB(positionAmt, lastBB, lastHigh, lastLow);
+      }
+
+      if (closeCheck) {
         await closePosition(symbol, positionAmt);
         await sendUSDTBalance();
 
@@ -162,7 +193,7 @@ const getBuyCheck = (
   lastRSI,
   positionAmt,
   lastClose,
-  sma120
+  sma160
 ) => {
   if (positionAmt > 0) return false;
 
@@ -178,7 +209,7 @@ const getBuyCheck = (
   if (
     lastBB.lower > lastLow &&
     lastRSI < rsiBuyThreshold &&
-    lastClose > sma120
+    lastClose > sma160
   ) {
     buySignal = true;
   }
@@ -193,7 +224,7 @@ const getSellCheck = (
   lastRSI,
   positionAmt,
   lastClose,
-  sma120
+  sma160
 ) => {
   if (positionAmt < 0) return false;
 
@@ -209,7 +240,7 @@ const getSellCheck = (
   if (
     lastBB.upper < lastHigh &&
     lastRSI > rsiSellThreshold &&
-    lastClose < sma120
+    lastClose < sma160
   ) {
     sellSignal = true;
   }
@@ -260,7 +291,7 @@ async function trade(symbol, interval = '15m') {
     await binance.futuresLeverage(symbol, setLeverage);
 
     const candles = await fetchCandlestickData(binance, symbol, interval, 1000);
-    const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma120 } =
+    const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
       await calculateIndicators(candles);
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
@@ -287,7 +318,7 @@ async function trade(symbol, interval = '15m') {
       lastRSI,
       positionAmt,
       lastClose,
-      sma120
+      sma160
     );
 
     const sellCheck = getSellCheck(
@@ -296,7 +327,7 @@ async function trade(symbol, interval = '15m') {
       lastRSI,
       positionAmt,
       lastClose,
-      sma120
+      sma160
     );
 
     try {
@@ -347,7 +378,7 @@ takeProfitPrice : ${takeProfitPrice}
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         }
       } else {
-        await checkStopLoss();
+        await checkStopLoss(lastBB, lastHigh, lastLow);
       }
     } catch (error) {
       sendMessage(`포지션 진입시 에러 발생: ${error.message}`);

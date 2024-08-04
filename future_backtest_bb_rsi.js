@@ -28,6 +28,8 @@ async function backtest(
   let takeProfitPrice = 0;
   let buySignal = false;
   let sellSignal = false;
+  const rsiBuyThreshold = 40; // RSI 과매도 조건
+  const rsiSellThreshold = 60; // RSI 과매수 조건
 
   try {
     const dataFilePath = path.resolve(
@@ -126,7 +128,7 @@ async function backtest(
       return { stopLoss, takeProfit };
     };
 
-    const getBuyCheck = (lastBB, lastLow, lastRSI, lastClose, sma120) => {
+    const getBuyCheck = (lastBB, lastLow, lastRSI, lastClose, sma160) => {
       if (position === 'LONG') return false;
 
       if (buySignal) {
@@ -138,14 +140,18 @@ async function backtest(
         }
       }
 
-      if (lastBB.lower > lastLow && lastRSI < 30 && lastClose > sma120) {
+      if (
+        lastBB.lower > lastLow &&
+        lastRSI < rsiBuyThreshold &&
+        lastClose > sma160
+      ) {
         buySignal = true;
       }
 
       return false;
     };
 
-    const getSellCheck = (lastBB, lastHigh, lastRSI, lastClose, sma120) => {
+    const getSellCheck = (lastBB, lastHigh, lastRSI, lastClose, sma160) => {
       if (position === 'SHORT') return false;
 
       if (sellSignal) {
@@ -157,25 +163,29 @@ async function backtest(
         }
       }
 
-      if (lastBB.upper < lastHigh && lastRSI > 70 && lastClose < sma120) {
+      if (
+        lastBB.upper < lastHigh &&
+        lastRSI > rsiSellThreshold &&
+        lastClose < sma160
+      ) {
         sellSignal = true;
       }
     };
 
-    for (let i = 120; i < candles.length; i++) {
-      const candleSlice = candles.slice(i - 120, i);
+    for (let i = 160; i < candles.length; i++) {
+      const candleSlice = candles.slice(i - 160, i);
       const indicators = calculateIndicators(candleSlice, 20, 2);
-      const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma120 } =
+      const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
         indicators;
 
-      const buyCheck = getBuyCheck(lastBB, lastLow, lastRSI, lastClose, sma120);
+      const buyCheck = getBuyCheck(lastBB, lastLow, lastRSI, lastClose, sma160);
 
       const sellCheck = getSellCheck(
         lastBB,
         lastHigh,
         lastRSI,
         lastClose,
-        sma120
+        sma160
       );
 
       if (position === null) {
@@ -195,6 +205,8 @@ async function backtest(
             action: 'BUY LONG position entered',
             price: entryPrice,
             profit: 0,
+            stopLossPrice,
+            takeProfitPrice,
             totalBalance: currentBalance,
           });
 
@@ -217,6 +229,8 @@ async function backtest(
             action: 'SELL SHORT position entered',
             price: entryPrice,
             profit: 0,
+            stopLossPrice,
+            takeProfitPrice,
             totalBalance: currentBalance,
           });
 
@@ -276,6 +290,8 @@ async function backtest(
           { id: 'price', title: 'PRICE' },
           { id: 'profit', title: 'PROFIT' },
           { id: 'profitPercent', title: 'PROFIT_PERCENT' },
+          { id: 'stopLossPrice', title: 'STOP_LOSS' },
+          { id: 'takeProfitPrice', title: 'TAKE_PROFIT' },
           { id: 'totalBalance', title: 'TOTAL_BALANCE' },
         ],
         encoding: 'utf8',

@@ -1,7 +1,12 @@
 require('dotenv').config();
+const phase = process.env.ENV_PHASE || 'production';
 const express = require('express');
-const bot = require('./telegram').bot;
-const futureBot = require('./telegram').futureBot;
+let bot = null;
+let futureBot = null;
+if (phase !== 'local') {
+  bot = require('./telegram').bot;
+  futureBot = require('./telegram').futureBot;
+}
 const binance = require('./binance_spot').binance;
 const binanceFutures = require('./binance_futures').binance;
 const { sendUSDTBalance } = require('./binance_common').binance_common;
@@ -17,7 +22,7 @@ const cron = require('node-cron');
 // const future_backtest_ma_bol = require('./future_backtest_ma_bol').backtest;
 // const future_backtest_bb_stochrsi =
 //   require('./future_backtest_bb_stochrsi').backtest;
-// const future_backtest_bb_rsi = require('./future_backtest_bb_rsi').backtest;
+const future_backtest_bb_rsi = require('./future_backtest_bb_rsi').backtest;
 
 cron.schedule('5 0 * * *', async () => {
   try {
@@ -80,6 +85,8 @@ app.get('/trade/end', (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+  if (bot === null) return;
+
   binance.setTelegramBot(bot);
   binanceFutures.setTelegramBot(futureBot);
 });

@@ -46,6 +46,7 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
     });
     const sma60 = SMA.calculate({ period: 60, values: closes });
     const sma120 = SMA.calculate({ period: 120, values: closes });
+    const sma160 = SMA.calculate({ period: 160, values: closes });
     const StochasticRSIs = StochasticRSI.calculate({
       values: closes,
       rsiPeriod: 14,
@@ -62,6 +63,7 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       stochasticRSI: StochasticRSIs[StochasticRSIs.length - 1],
       sma60: sma60[sma60.length - 1],
       sma120: sma120[sma120.length - 1],
+      sma160: sma160[sma160.length - 1],
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
