@@ -53,6 +53,8 @@ futureBot.on('message', async (msg) => {
     binanceFutures.sendPositionData();
   } else if (args[0] === '/잔액') {
     binanceFutures.sendUSDTBalance();
+  } else if (args[0] === '/현재') {
+    binanceFutures.currentCheck();
   } else if (args[0] === '/총잔액') {
     const totalBalance = await sendUSDTBalance(binance.binance);
     futureBot.sendMessage(chatId, `총 잔액: ${totalBalance}`);

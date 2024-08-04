@@ -1,4 +1,5 @@
 require('dotenv').config();
+const phase = process.env.ENV_PHASE || 'production';
 const Binance = require('node-binance-api');
 const coinDB = require('./db').coinDB;
 
@@ -176,8 +177,15 @@ async function checkStopLoss(lastBB, lastHigh, lastLow) {
 실현손익: ${unrealizedProfit.toFixed(2)}USDT
 현재가 : ${markPrice},
 stopLossPrice: ${stopLossPrice},
-takeProfitPrice: ${takeProfitPrice}`
+takeProfitPrice: ${takeProfitPrice}
+손절, 손익 : ${markPrice <= stopLossPrice || markPrice >= takeProfitPrice},
+볼린저 밴드 : ${
+            (positionAmt > 0 && lastHigh < lastBB.upper) ||
+            (positionAmt < 0 && lastLow > lastBB.lower)
+          }
+`
         );
+        await currentCheck();
       }
     }
   } catch (error) {
@@ -277,6 +285,22 @@ const calculateStopLossTakeProfit = (
   return { stopLoss, takeProfit };
 };
 
+const currentCheck = async () => {
+  const candles = await fetchCandlestickData(binance, symbol, interval, 1000);
+  const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
+    await calculateIndicators(candles);
+
+  sendMessage(`현재 상태
+lastBB.lower: ${lastBB.lower},
+lastBB.upper: ${lastBB.upper},
+lastClose: ${lastClose},
+lastLow: ${lastLow},
+lastHigh: ${lastHigh},
+lastRSI: ${lastRSI},
+sma160: ${sma160}
+`);
+};
+
 // trade('BTCUSDT', '15m');
 
 // 트레이딩 함수
@@ -293,6 +317,18 @@ async function trade(symbol, interval = '15m') {
     const candles = await fetchCandlestickData(binance, symbol, interval, 1000);
     const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
       await calculateIndicators(candles);
+
+    console.log(
+      `lastBB.lower: ${lastBB.lower},
+lastBB.upper: ${lastBB.upper},
+lastClose: ${lastClose},
+lastLow: ${lastLow},
+lastLow: ${lastLow},
+lastHigh: ${lastHigh},
+lastRSI: ${lastRSI},
+sma160: ${sma160}
+`
+    );
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
@@ -428,4 +464,5 @@ exports.binance = {
   setTelegramBot,
   sendPositionData,
   sendUSDTBalance,
+  currentCheck,
 };
