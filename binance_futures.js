@@ -86,18 +86,12 @@ const sendUSDTBalance = async () => {
 // 포지션 오픈
 async function openPosition(symbol, quantity, type, entryPrice) {
   try {
-    console.log(
-      `Opening ${type} position for ${symbol} with quantity ${quantity}`
-    );
     if (type === 'LONG') {
-      const order = await binance.futuresMarketBuy(symbol, quantity);
-      console.log(`Long position opened: `, order);
+      await binance.futuresMarketBuy(symbol, quantity);
     } else if (type === 'SHORT') {
-      const order = await binance.futuresMarketSell(symbol, quantity);
-      console.log(`Short position opened: `, order);
+      await binance.futuresMarketSell(symbol, quantity);
     }
   } catch (error) {
-    console.error(`Failed to open ${type} position for ${symbol}:`, error);
     sendMessage(
       `포지션 오픈 실패: symbol, quantity, type, entryPrice, 
 ${symbol}, ${quantity}, ${type}, ${entryPrice} ${error.message}`
@@ -117,8 +111,8 @@ async function closePosition(symbol, positionAmt) {
       await binance.futuresMarketBuy(symbol, Math.abs(positionAmt));
     }
   } catch (error) {
-    console.error(`Failed to close position for ${symbol}:`, error);
     sendMessage(`포지션 청산 실패: ${error.message}`);
+    console.error(`Failed to close position for ${symbol}:`, error);
     throw error;
   }
 }
@@ -131,6 +125,7 @@ const checkBB = (positionAmt, lastBB, lastHigh, lastLow) => {
     (positionAmt > 0 && lastHigh > lastBB.upper) ||
     (positionAmt < 0 && lastLow < lastBB.lower)
   ) {
+    sendMessage('볼린저 밴드 돌파 신호 발생');
     closeSignal = true;
   }
 };
@@ -141,7 +136,6 @@ async function checkStopLoss(lastBB, lastHigh, lastLow) {
     const { positions } = await getFutureAccountInfo(binance);
 
     if (positions.length === 0) {
-      console.log('No open positions to monitor.');
       return;
     }
 
@@ -169,6 +163,8 @@ async function checkStopLoss(lastBB, lastHigh, lastLow) {
       }
 
       if (closeCheck) {
+        sendMessage('손절, 익절 조건 충족');
+
         await closePosition(symbol, positionAmt);
         await sendUSDTBalance();
 
@@ -189,6 +185,7 @@ takeProfitPrice: ${takeProfitPrice}
       }
     }
   } catch (error) {
+    sendMessage(`checkStopLoss 에러 발생: ${error?.message}`);
     console.error('Failed to monitor positions:', error);
     throw error;
   }
@@ -219,6 +216,7 @@ const getBuyCheck = (
     lastRSI < rsiBuyThreshold &&
     lastClose > sma160
   ) {
+    sendMessage(`LONG 포지션 진입 신호 발생`);
     buySignal = true;
   }
 
@@ -250,6 +248,7 @@ const getSellCheck = (
     lastRSI > rsiSellThreshold &&
     lastClose < sma160
   ) {
+    sendMessage(`SHORT 포지션 진입 신호 발생`);
     sellSignal = true;
   }
 
@@ -286,7 +285,7 @@ const calculateStopLossTakeProfit = (
 };
 
 const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
-  const candles = await fetchCandlestickData(binance, symbol, interval, 1000);
+  const candles = await fetchCandlestickData(binance, symbol, interval, 240);
   const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
     await calculateIndicators(candles);
 
@@ -314,21 +313,9 @@ async function trade(symbol, interval = '15m') {
     const setLeverage = 1;
     await binance.futuresLeverage(symbol, setLeverage);
 
-    const candles = await fetchCandlestickData(binance, symbol, interval, 1000);
+    const candles = await fetchCandlestickData(binance, symbol, interval, 240);
     const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
       await calculateIndicators(candles);
-
-    //     console.log(
-    //       `lastBB.lower: ${lastBB.lower},
-    // lastBB.upper: ${lastBB.upper},
-    // lastClose: ${lastClose},
-    // lastLow: ${lastLow},
-    // lastLow: ${lastLow},
-    // lastHigh: ${lastHigh},
-    // lastRSI: ${lastRSI},
-    // sma160: ${sma160}
-    // `
-    //     );
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
@@ -370,6 +357,7 @@ async function trade(symbol, interval = '15m') {
       if (positions.length === 0) {
         if (buyCheck) {
           // 롱 포지션 진입
+          sendMessage(`롱포지션 조건 충족`);
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'LONG',
             candles.slice(-20),
@@ -379,8 +367,7 @@ async function trade(symbol, interval = '15m') {
           takeProfitPrice = takeProfit;
 
           await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
-          sendMessage(`롱포지션 조건 충족.
-${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
+          sendMessage(`${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 롱포지션 실행.
 선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
 볼린저 하단: ${lastBB.lower.toFixed(3)},
@@ -392,6 +379,7 @@ takeProfitPrice : ${takeProfitPrice}
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         } else if (sellCheck) {
           // 숏 포지션 진입
+          sendMessage(`숏포지션 조건 충족.`);
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'SHORT',
             candles.slice(-20),
@@ -401,8 +389,7 @@ takeProfitPrice : ${takeProfitPrice}
           takeProfitPrice = takeProfit;
 
           await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
-          sendMessage(`숏포지션 조건 충족.
-${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행.
+          sendMessage(`${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행.
 선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
 볼린저 하단: ${lastBB.lower.toFixed(3)},
@@ -451,9 +438,9 @@ async function endTrade() {
     if (intervalHandler !== null) {
       clearInterval(intervalHandler);
       intervalHandler = null;
-      console.log('Trading stopped.');
     }
   } catch (error) {
+    sendMessage('Trade execution end failed:', error);
     console.error('Trade execution end failed:', error);
   }
 }
