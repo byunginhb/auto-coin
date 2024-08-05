@@ -118,12 +118,12 @@ async function closePosition(symbol, positionAmt) {
 }
 
 //손절, 익절을 위한 볼린저 밴드 체크
-const checkBB = (positionAmt, lastBB, lastHigh, lastLow) => {
+const checkBB = (positionAmt, curBB, curHigh, curLow) => {
   // 롱 포지션 일 때, 볼린저 밴드 상단 돌파 했는지 체크
   // 숏 포지션 일 때, 볼린저 밴드 하단 돌파 했는지 체크
   if (
-    (positionAmt > 0 && lastHigh > lastBB.upper) ||
-    (positionAmt < 0 && lastLow < lastBB.lower)
+    (positionAmt > 0 && curHigh > curBB.upper) ||
+    (positionAmt < 0 && curLow < curBB.lower)
   ) {
     sendMessage('볼린저 밴드 돌파 신호 발생');
     closeSignal = true;
@@ -131,7 +131,7 @@ const checkBB = (positionAmt, lastBB, lastHigh, lastLow) => {
 };
 
 // 포지션 모니터링 손절,익절 체크
-async function checkStopLoss(lastBB, lastHigh, lastLow) {
+async function checkStopLoss(curBB, curHigh, curLow) {
   try {
     const { positions } = await getFutureAccountInfo(binance);
 
@@ -158,15 +158,15 @@ async function checkStopLoss(lastBB, lastHigh, lastLow) {
       if (closeSignal) {
         // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
         if (
-          (positionAmt > 0 && lastHigh < lastBB.upper) ||
-          (positionAmt < 0 && lastLow > lastBB.lower)
+          (positionAmt > 0 && curHigh < curBB.upper) ||
+          (positionAmt < 0 && curLow > curBB.lower)
         ) {
           closeCheck = true;
           closeSignal = false;
         }
       } else {
         // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
-        checkBB(positionAmt, lastBB, lastHigh, lastLow);
+        checkBB(positionAmt, curBB, curHigh, curLow);
       }
 
       if (closeCheck) {
@@ -183,8 +183,8 @@ stopLossPrice: ${stopLossPrice},
 takeProfitPrice: ${takeProfitPrice}
 손절, 손익 : ${markPrice <= stopLossPrice || markPrice >= takeProfitPrice},
 볼린저 밴드 : ${
-            (positionAmt > 0 && lastHigh < lastBB.upper) ||
-            (positionAmt < 0 && lastLow > lastBB.lower)
+            (positionAmt > 0 && curHigh < curBB.upper) ||
+            (positionAmt < 0 && curLow > curBB.lower)
           }
 `
         );
@@ -321,8 +321,17 @@ async function trade(symbol, interval = '15m') {
     await binance.futuresLeverage(symbol, setLeverage);
 
     const candles = await fetchCandlestickData(binance, symbol, interval, 240);
-    const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
-      await calculateIndicators(candles);
+    const {
+      lastBB,
+      lastClose,
+      lastLow,
+      lastHigh,
+      lastRSI,
+      sma160,
+      curBB,
+      curHigh,
+      curLow,
+    } = await calculateIndicators(candles);
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
@@ -408,7 +417,7 @@ takeProfitPrice : ${takeProfitPrice}
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         }
       } else {
-        await checkStopLoss(lastBB, lastHigh, lastLow);
+        await checkStopLoss(curBB, curHigh, curLow);
       }
     } catch (error) {
       sendMessage(`포지션 진입시 에러 발생: ${error.message}`);

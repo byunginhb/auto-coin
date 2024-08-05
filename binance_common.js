@@ -64,6 +64,9 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       sma60: sma60[sma60.length - 2],
       sma120: sma120[sma120.length - 2],
       sma160: sma160[sma160.length - 2],
+      curBB: bbValues[bbValues.length - 1],
+      curHigh: highs[highs.length - 1],
+      curLow: lows[lows.length - 1],
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
