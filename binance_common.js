@@ -55,15 +55,15 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       dPeriod: 3,
     });
     return {
-      lastRSI: rsiValues[rsiValues.length - 1],
-      lastBB: bbValues[bbValues.length - 1],
-      lastClose: closes[closes.length - 1],
-      lastHigh: highs[closes.length - 1],
-      lastLow: lows[closes.length - 1],
-      stochasticRSI: StochasticRSIs[StochasticRSIs.length - 1],
-      sma60: sma60[sma60.length - 1],
-      sma120: sma120[sma120.length - 1],
-      sma160: sma160[sma160.length - 1],
+      lastRSI: rsiValues[rsiValues.length - 2],
+      lastBB: bbValues[bbValues.length - 2],
+      lastClose: closes[closes.length - 2],
+      lastHigh: highs[closes.length - 2],
+      lastLow: lows[closes.length - 2],
+      stochasticRSI: StochasticRSIs[StochasticRSIs.length - 2],
+      sma60: sma60[sma60.length - 2],
+      sma120: sma120[sma120.length - 2],
+      sma160: sma160[sma160.length - 2],
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
