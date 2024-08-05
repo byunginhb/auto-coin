@@ -144,8 +144,15 @@ async function checkStopLoss(lastBB, lastHigh, lastLow) {
         await getPositionData(pos, binance);
 
       // 손절, 익절 구간 체크
-      let closeCheck =
-        markPrice <= stopLossPrice || markPrice >= takeProfitPrice;
+      let closeCheck = false;
+
+      if (positionAmt > 0) {
+        //롱 포지션
+        closeCheck = markPrice <= stopLossPrice || markPrice >= takeProfitPrice;
+      } else if (positionAmt < 0) {
+        //숏 포지션
+        closeCheck = markPrice >= stopLossPrice || markPrice <= takeProfitPrice;
+      }
 
       //추세 변환 체크
       if (closeSignal) {
