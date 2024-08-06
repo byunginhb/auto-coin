@@ -451,7 +451,7 @@ async function startTrade(symbol = 'BTCUSDT', interval = '15m') {
     trade(symbol, interval);
 
     // 300초마다 trade 함수 실행
-    intervalHandler = setInterval(() => trade(symbol, interval), 300 * 1000);
+    intervalHandler = setInterval(() => trade(symbol, interval), 120 * 1000);
     sendMessage('트레이딩을 시작합니다.');
   } catch (error) {
     sendMessage('Trade execution start failed:', error);
