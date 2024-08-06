@@ -118,12 +118,12 @@ async function closePosition(symbol, positionAmt) {
 }
 
 //손절, 익절을 위한 볼린저 밴드 체크
-const checkBB = (positionAmt, curBB, curHigh, curLow) => {
+const checkBB = (positionAmt, lastBB, curHigh, curLow) => {
   // 롱 포지션 일 때, 볼린저 밴드 상단 돌파 했는지 체크
   // 숏 포지션 일 때, 볼린저 밴드 하단 돌파 했는지 체크
   if (
-    (positionAmt > 0 && curHigh > curBB.upper) ||
-    (positionAmt < 0 && curLow < curBB.lower)
+    (positionAmt > 0 && curHigh > lastBB.upper) ||
+    (positionAmt < 0 && curLow < lastBB.lower)
   ) {
     sendMessage('볼린저 밴드 돌파 신호 발생');
     closeSignal = true;
@@ -131,7 +131,7 @@ const checkBB = (positionAmt, curBB, curHigh, curLow) => {
 };
 
 // 포지션 모니터링 손절,익절 체크
-async function checkStopLoss(curBB, curHigh, curLow) {
+async function checkStopLoss(lastBB, curHigh, curLow) {
   try {
     const { positions } = await getFutureAccountInfo(binance);
 
@@ -145,32 +145,42 @@ async function checkStopLoss(curBB, curHigh, curLow) {
 
       // 손절, 익절 구간 체크
       let closeCheck = false;
+      let stopTakeCheck = false;
 
       if (positionAmt > 0) {
         //롱 포지션
-        closeCheck = markPrice <= stopLossPrice || markPrice >= takeProfitPrice;
+        stopTakeCheck =
+          Number(markPrice) <= Number(stopLossPrice) ||
+          Number(markPrice) >= Number(takeProfitPrice);
       } else if (positionAmt < 0) {
         //숏 포지션
-        closeCheck = markPrice >= stopLossPrice || markPrice <= takeProfitPrice;
+        stopTakeCheck =
+          Number(markPrice) >= Number(stopLossPrice) ||
+          Number(markPrice) <= Number(takeProfitPrice);
       }
+      closeCheck = stopTakeCheck;
 
       //추세 변환 체크
       if (closeSignal) {
         // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
         if (
-          (positionAmt > 0 && curHigh < curBB.upper) ||
-          (positionAmt < 0 && curLow > curBB.lower)
+          (positionAmt > 0 && curHigh < lastBB.upper) ||
+          (positionAmt < 0 && curLow > lastBB.lower)
         ) {
           closeCheck = true;
           closeSignal = false;
         }
       } else {
         // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
-        checkBB(positionAmt, curBB, curHigh, curLow);
+        checkBB(positionAmt, lastBB, curHigh, curLow);
       }
 
       if (closeCheck) {
-        sendMessage('손절, 익절 조건 충족');
+        sendMessage(`손절, 익절 조건 충족
+curHigh: ${curHigh},
+curLow: ${curLow},
+lastBB.upper: ${lastBB.upper},
+lastBB.lower: ${lastBB.lower}`);
 
         await closePosition(symbol, positionAmt);
         await sendUSDTBalance();
@@ -181,10 +191,10 @@ async function checkStopLoss(curBB, curHigh, curLow) {
 현재가 : ${markPrice},
 stopLossPrice: ${stopLossPrice},
 takeProfitPrice: ${takeProfitPrice}
-손절, 손익 : ${markPrice <= stopLossPrice || markPrice >= takeProfitPrice},
+손절, 손익 : ${stopTakeCheck},
 볼린저 밴드 : ${
-            (positionAmt > 0 && curHigh < curBB.upper) ||
-            (positionAmt < 0 && curLow > curBB.lower)
+            (positionAmt > 0 && curHigh < lastBB.upper) ||
+            (positionAmt < 0 && curLow > lastBB.lower)
           }
 `
         );
