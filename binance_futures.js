@@ -237,7 +237,7 @@ const getBuyCheck = (
     buySignal = true;
   }
 
-  if (lastClose < sma160) {
+  if (lastClose < sma160 && buySignal === true) {
     sendMessage(`이평선 아래로 가격이 떨어져서 buySignal 초기화`);
     buySignal = false;
   }
@@ -274,7 +274,7 @@ const getSellCheck = (
     sellSignal = true;
   }
 
-  if (lastClose > sma160) {
+  if (lastClose > sma160 && sellSignal === true) {
     sendMessage(`이평선 위로 가격이 올라가서 sellSignal 초기화`);
     sellSignal = false;
   }
