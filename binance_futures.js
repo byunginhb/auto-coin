@@ -237,6 +237,11 @@ const getBuyCheck = (
     buySignal = true;
   }
 
+  if (lastClose < sma160) {
+    sendMessage(`이평선 아래로 가격이 떨어져서 buySignal 초기화`);
+    buySignal = false;
+  }
+
   return false;
 };
 
@@ -267,6 +272,11 @@ const getSellCheck = (
   ) {
     sendMessage(`SHORT 포지션 진입 신호 발생`);
     sellSignal = true;
+  }
+
+  if (lastClose > sma160) {
+    sendMessage(`이평선 위로 가격이 올라가서 sellSignal 초기화`);
+    sellSignal = false;
   }
 
   return false;
