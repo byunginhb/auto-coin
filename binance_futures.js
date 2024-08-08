@@ -176,6 +176,8 @@ async function checkStopLoss(lastBB, curHigh, curLow) {
       }
 
       if (closeCheck) {
+        closeSignal = false;
+
         sendMessage(`손절, 익절 조건 충족
 curHigh: ${curHigh},
 curLow: ${curLow},
@@ -190,7 +192,7 @@ lastBB.lower: ${lastBB.lower}`);
 실현손익: ${unrealizedProfit.toFixed(2)}USDT
 현재가 : ${markPrice},
 stopLossPrice: ${stopLossPrice},
-takeProfitPrice: ${takeProfitPrice}
+takeProfitPrice: ${takeProfitPrice},
 손절, 손익 : ${stopTakeCheck},
 볼린저 밴드 : ${
             (positionAmt > 0 && curHigh < lastBB.upper) ||
