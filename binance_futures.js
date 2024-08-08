@@ -236,11 +236,7 @@ const getBuyCheck = (
     }
   }
 
-  if (
-    lastBB.lower > lastLow &&
-    lastRSI < rsiBuyThreshold &&
-    lastClose > sma160
-  ) {
+  if (lastBB.lower > lastLow && lastClose > sma160) {
     sendMessage(`LONG 포지션 진입 신호 발생`);
     buySignal = true;
   }
@@ -273,11 +269,7 @@ const getSellCheck = (
     }
   }
 
-  if (
-    lastBB.upper < lastHigh &&
-    lastRSI > rsiSellThreshold &&
-    lastClose < sma160
-  ) {
+  if (lastBB.upper < lastHigh && lastClose < sma160) {
     sendMessage(`SHORT 포지션 진입 신호 발생`);
     sellSignal = true;
   }
