@@ -131,7 +131,7 @@ const checkBB = (positionAmt, lastBB, curHigh, curLow) => {
 };
 
 // 포지션 모니터링 손절,익절 체크
-async function checkStopLoss(lastBB, curHigh, curLow) {
+async function checkStopLoss(lastBB, curHigh, curLow, sma160) {
   try {
     const { positions } = await getFutureAccountInfo(binance);
 
@@ -146,19 +146,24 @@ async function checkStopLoss(lastBB, curHigh, curLow) {
       // 손절, 익절 구간 체크
       let closeCheck = false;
       let stopTakeCheck = false;
+      let changedWave = false;
 
       if (positionAmt > 0) {
         //롱 포지션
         stopTakeCheck =
           Number(markPrice) <= Number(stopLossPrice) ||
           Number(markPrice) >= Number(takeProfitPrice);
+
+        changedWave = Number(markPrice) < sma160;
       } else if (positionAmt < 0) {
         //숏 포지션
         stopTakeCheck =
           Number(markPrice) >= Number(stopLossPrice) ||
           Number(markPrice) <= Number(takeProfitPrice);
+
+        changedWave = Number(markPrice) > sma160;
       }
-      closeCheck = stopTakeCheck;
+      closeCheck = stopTakeCheck || changedWave;
 
       //추세 변환 체크
       if (closeSignal) {
@@ -179,26 +184,27 @@ async function checkStopLoss(lastBB, curHigh, curLow) {
         closeSignal = false;
 
         sendMessage(`손절, 익절 조건 충족
+포지션 : ${positionAmt > 0 ? '롱' : '숏'},
 curHigh: ${curHigh},
 curLow: ${curLow},
 lastBB.upper: ${lastBB.upper},
-lastBB.lower: ${lastBB.lower}`);
+lastBB.lower: ${lastBB.lower},
+현재가 : ${markPrice},
+stopLossPrice: ${stopLossPrice},
+takeProfitPrice: ${takeProfitPrice},
+추세 변환: ${changedWave},
+손절, 손익 : ${stopTakeCheck},
+볼린저 밴드 : ${
+          (positionAmt > 0 && curHigh < lastBB.upper) ||
+          (positionAmt < 0 && curLow > lastBB.lower)
+        }`);
 
         await closePosition(symbol, positionAmt);
         await sendUSDTBalance();
 
         sendMessage(
           `${symbol} 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT
-현재가 : ${markPrice},
-stopLossPrice: ${stopLossPrice},
-takeProfitPrice: ${takeProfitPrice},
-손절, 손익 : ${stopTakeCheck},
-볼린저 밴드 : ${
-            (positionAmt > 0 && curHigh < lastBB.upper) ||
-            (positionAmt < 0 && curLow > lastBB.lower)
-          }
-`
+실현손익: ${unrealizedProfit.toFixed(2)}USDT`
         );
         await currentCheck(symbol);
       }
@@ -439,7 +445,7 @@ takeProfitPrice : ${takeProfitPrice}
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         }
       } else {
-        await checkStopLoss(curBB, curHigh, curLow);
+        await checkStopLoss(curBB, curHigh, curLow, sma160);
       }
     } catch (error) {
       sendMessage(`포지션 진입시 에러 발생: ${error.message}`);
@@ -463,7 +469,7 @@ async function startTrade(symbol = 'BTCUSDT', interval = '15m') {
     trade(symbol, interval);
 
     // 300초마다 trade 함수 실행
-    intervalHandler = setInterval(() => trade(symbol, interval), 120 * 1000);
+    intervalHandler = setInterval(() => trade(symbol, interval), 240 * 1000);
     sendMessage('트레이딩을 시작합니다.');
   } catch (error) {
     sendMessage('Trade execution start failed:', error);
