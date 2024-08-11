@@ -314,7 +314,7 @@ const calculateStopLossTakeProfit = (
 const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
   const candles = await fetchCandlestickData(binance, symbol, interval, 240);
   const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
-    await calculateIndicators(candles);
+    await calculateIndicators(candles, 20, 1.5);
 
   sendMessage(`현재 상태
 lastBB.lower: ${lastBB.lower},

@@ -187,10 +187,19 @@ async function backtest(
     };
 
     // 포지션 모니터링 손절,익절 체크
-    function checkStopLoss(curBB, curHigh, curLow, lastClose, closedDate) {
+    function checkStopLoss(
+      curBB,
+      curHigh,
+      curLow,
+      lastClose,
+      closedDate,
+      sma160
+    ) {
       // 손절, 익절 구간 체크
       let closeCheck = false;
       let stopTakeCheck = false;
+      let changedWave = false;
+      let bbCheck = false;
 
       try {
         if (position === 'LONG') {
@@ -202,7 +211,8 @@ async function backtest(
             Number(lastClose) <= Number(stopLossPrice) ||
             Number(lastClose) >= Number(takeProfitPrice);
 
-          closeCheck = stopTakeCheck;
+          changedWave = Number(lastClose) < sma160;
+          closeCheck = stopTakeCheck || changedWave;
 
           //추세 변환 체크
           if (closeSignal) {
@@ -210,6 +220,7 @@ async function backtest(
             if (position === 'LONG' && curHigh < curBB.upper) {
               closeCheck = true;
               closeSignal = false;
+              bbCheck = true;
             }
           } else {
             // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
@@ -217,6 +228,8 @@ async function backtest(
           }
 
           if (closeCheck) {
+            closeSignal = false;
+
             // 롱 포지션 종료
             currentBalance += profit;
             results.push({
@@ -226,7 +239,12 @@ async function backtest(
               profit: profit,
               profitPercent: profitPercent,
               totalBalance: currentBalance,
+              stopTakeCheck,
+              changedWave,
+              bbCheck,
             });
+
+            bbCheck = false;
             position = null;
           }
         } else if (position === 'SHORT') {
@@ -238,7 +256,8 @@ async function backtest(
             Number(lastClose) >= Number(stopLossPrice) ||
             Number(lastClose) <= Number(takeProfitPrice);
 
-          closeCheck = stopTakeCheck;
+          changedWave = Number(lastClose) > sma160;
+          closeCheck = stopTakeCheck || changedWave;
 
           //추세 변환 체크
           if (closeSignal) {
@@ -246,6 +265,7 @@ async function backtest(
             if (position === 'SHORT' && curLow > curBB.lower) {
               closeCheck = true;
               closeSignal = false;
+              bbCheck = true;
             }
           } else {
             // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
@@ -253,6 +273,8 @@ async function backtest(
           }
 
           if (closeCheck) {
+            closeSignal = false;
+
             // 숏 포지션 종료
             currentBalance += profit;
             results.push({
@@ -262,7 +284,12 @@ async function backtest(
               profit: profit,
               profitPercent: profitPercent,
               totalBalance: currentBalance,
+              stopTakeCheck,
+              changedWave,
+              bbCheck,
             });
+
+            bbCheck = false;
             position = null;
           }
         }
@@ -274,7 +301,7 @@ async function backtest(
 
     for (let i = 320; i < candles.length; i++) {
       const candleSlice = candles.slice(i - 320, i);
-      const indicators = calculateIndicators(candleSlice, 20, 2);
+      const indicators = calculateIndicators(candleSlice, 20, 1.5);
       const {
         lastBB,
         lastClose,
@@ -352,7 +379,8 @@ async function backtest(
           curHigh,
           curLow,
           lastClose,
-          convertToKoreanTimeZone(new Date(candles[i][0]))
+          convertToKoreanTimeZone(new Date(candles[i][0])),
+          sma160
         );
       }
     }
@@ -373,6 +401,9 @@ async function backtest(
           { id: 'profitPercent', title: 'PROFIT_PERCENT' },
           { id: 'stopLossPrice', title: 'STOP_LOSS' },
           { id: 'takeProfitPrice', title: 'TAKE_PROFIT' },
+          { id: 'stopTakeCheck', title: 'STOP_TAKE_CHECK' },
+          { id: 'changedWave', title: 'CHANGED_WAVE' },
+          { id: 'bbCheck', title: 'BB_CHECK' },
           { id: 'totalBalance', title: 'TOTAL_BALANCE' },
         ],
         encoding: 'utf8',
