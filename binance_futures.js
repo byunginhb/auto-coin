@@ -298,14 +298,14 @@ const calculateStopLossTakeProfit = (
   if (positionType === 'LONG') {
     const lowestLow = Math.min(...recentCandles.map((candle) => candle[3]));
     stopLoss = Math.max(Math.min(lowestLow, minimumStopLoss), maximumStopLoss);
-    takeProfit = entryPrice + 2 * (entryPrice - stopLoss);
+    takeProfit = entryPrice + 3 * (entryPrice - stopLoss);
   } else if (positionType === 'SHORT') {
     const highestHigh = Math.max(...recentCandles.map((candle) => candle[2]));
     stopLoss = Math.min(
       Math.max(highestHigh, minimumStopLoss),
       maximumStopLoss
     );
-    takeProfit = entryPrice - 2 * (stopLoss - entryPrice);
+    takeProfit = entryPrice - 3 * (stopLoss - entryPrice);
   }
 
   return { stopLoss, takeProfit };
