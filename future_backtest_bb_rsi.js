@@ -115,7 +115,7 @@ async function backtest(
           Math.min(lowestLow, minimumStopLoss),
           maximumStopLoss
         );
-        takeProfit = entryPrice + 2 * (entryPrice - stopLoss);
+        takeProfit = entryPrice + 3 * (entryPrice - stopLoss);
       } else if (positionType === 'SHORT') {
         const highestHigh = Math.max(
           ...recentCandles.map((candle) => candle[2])
@@ -124,7 +124,7 @@ async function backtest(
           Math.max(highestHigh, minimumStopLoss),
           maximumStopLoss
         );
-        takeProfit = entryPrice - 2 * (stopLoss - entryPrice);
+        takeProfit = entryPrice - 3 * (stopLoss - entryPrice);
       }
 
       return { stopLoss, takeProfit };
