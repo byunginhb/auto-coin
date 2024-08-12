@@ -133,6 +133,10 @@ async function backtest(
     const getBuyCheck = (lastBB, lastLow, lastRSI, lastClose, sma160) => {
       if (position === 'LONG') return false;
 
+      if (lastClose < sma160 && buySignal === true) {
+        buySignal = false;
+      }
+
       if (buySignal) {
         if (lastLow > lastBB.lower) {
           buySignal = false;
@@ -146,15 +150,15 @@ async function backtest(
         buySignal = true;
       }
 
-      if (lastClose < sma160 && buySignal === true) {
-        buySignal = false;
-      }
-
       return false;
     };
 
     const getSellCheck = (lastBB, lastHigh, lastRSI, lastClose, sma160) => {
       if (position === 'SHORT') return false;
+
+      if (lastClose > sma160 && sellSignal === true) {
+        sellSignal = false;
+      }
 
       if (sellSignal) {
         if (lastHigh < lastBB.upper) {
@@ -169,9 +173,7 @@ async function backtest(
         sellSignal = true;
       }
 
-      if (lastClose > sma160 && sellSignal === true) {
-        sellSignal = false;
-      }
+      return false;
     };
 
     //손절, 익절을 위한 볼린저 밴드 체크
@@ -343,6 +345,7 @@ async function backtest(
             profit: 0,
             stopLossPrice,
             takeProfitPrice,
+            sma160,
             totalBalance: currentBalance,
           });
 
@@ -367,6 +370,7 @@ async function backtest(
             profit: 0,
             stopLossPrice,
             takeProfitPrice,
+            sma160,
             totalBalance: currentBalance,
           });
 
@@ -404,6 +408,7 @@ async function backtest(
           { id: 'stopTakeCheck', title: 'STOP_TAKE_CHECK' },
           { id: 'changedWave', title: 'CHANGED_WAVE' },
           { id: 'bbCheck', title: 'BB_CHECK' },
+          { id: 'sma160', title: 'SMA160' },
           { id: 'totalBalance', title: 'TOTAL_BALANCE' },
         ],
         encoding: 'utf8',
@@ -465,11 +470,11 @@ function intervalToMilliseconds(interval) {
 async function onceBacktest() {
   const finalBalance = await backtest(
     'BTCUSDT',
-    //'ETHUSDT',
+    // 'ETHUSDT',
     //'XRPUSDT',
     '15m',
-    '2021-01-01',
-    '2024-07-25',
+    '2024-08-03',
+    '2024-08-12',
     true
   );
   console.log(finalBalance);
