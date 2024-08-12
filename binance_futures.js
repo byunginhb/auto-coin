@@ -424,7 +424,7 @@ takeProfitPrice : ${takeProfitPrice}
           stopLossPrice = stopLoss;
           takeProfitPrice = takeProfit;
 
-          await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
+          await openPosition(symbol, adjustedQuantity, 'SHORT', currentPrice);
           sendMessage(`${adjustedQuantity} 수량으로 ${currentPrice} ${symbol} 숏포지션 실행.
 선물 RSI: ${lastRSI},
 마지막 금액: ${currentPrice},
