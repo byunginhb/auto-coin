@@ -227,6 +227,11 @@ const getBuyCheck = (
 ) => {
   if (positionAmt > 0) return false;
 
+  if (lastClose < sma160 && buySignal === true) {
+    sendMessage(`이평선 아래로 가격이 떨어져서 buySignal 초기화`);
+    buySignal = false;
+  }
+
   if (buySignal) {
     if (lastLow > lastBB.lower) {
       buySignal = false;
@@ -239,11 +244,6 @@ const getBuyCheck = (
   if (lastBB.lower > lastLow && lastClose > sma160) {
     sendMessage(`LONG 포지션 진입 신호 발생`);
     buySignal = true;
-  }
-
-  if (lastClose < sma160 && buySignal === true) {
-    sendMessage(`이평선 아래로 가격이 떨어져서 buySignal 초기화`);
-    buySignal = false;
   }
 
   return false;
@@ -260,6 +260,11 @@ const getSellCheck = (
 ) => {
   if (positionAmt < 0) return false;
 
+  if (lastClose > sma160 && sellSignal === true) {
+    sendMessage(`이평선 위로 가격이 올라가서 sellSignal 초기화`);
+    sellSignal = false;
+  }
+
   if (sellSignal) {
     if (lastHigh < lastBB.upper) {
       sellSignal = false;
@@ -272,11 +277,6 @@ const getSellCheck = (
   if (lastBB.upper < lastHigh && lastClose < sma160) {
     sendMessage(`SHORT 포지션 진입 신호 발생`);
     sellSignal = true;
-  }
-
-  if (lastClose > sma160 && sellSignal === true) {
-    sendMessage(`이평선 위로 가격이 올라가서 sellSignal 초기화`);
-    sellSignal = false;
   }
 
   return false;
