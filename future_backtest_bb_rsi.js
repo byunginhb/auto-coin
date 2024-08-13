@@ -473,7 +473,7 @@ async function onceBacktest() {
     // 'ETHUSDT',
     //'XRPUSDT',
     '15m',
-    '2024-08-03',
+    '2021-01-01',
     '2024-08-12',
     true
   );
