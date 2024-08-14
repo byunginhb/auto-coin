@@ -312,9 +312,18 @@ const calculateStopLossTakeProfit = (
 };
 
 const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
-  const candles = await fetchCandlestickData(binance, symbol, interval, 240);
-  const { lastBB, lastClose, lastLow, lastHigh, lastRSI, sma160 } =
-    await calculateIndicators(candles, 20, 1.5);
+  const candles = await fetchCandlestickData(binance, symbol, interval, 480);
+  const {
+    lastBB,
+    lastClose,
+    lastLow,
+    lastHigh,
+    lastRSI,
+    sma160,
+    curBB,
+    curHigh,
+    curLow,
+  } = await calculateIndicators(candles, 20, 1.5);
 
   sendMessage(`현재 상태
 lastBB.lower: ${lastBB.lower},
@@ -323,6 +332,10 @@ lastClose: ${lastClose},
 lastLow: ${lastLow},
 lastHigh: ${lastHigh},
 lastRSI: ${lastRSI},
+curBB.lower: ${curBB.lower},
+curBB.upper: ${curBB.upper},
+curHigh: ${curHigh},
+curLow: ${curLow},
 sma160: ${sma160}
 `);
 };
@@ -340,7 +353,7 @@ async function trade(symbol, interval = '15m') {
     const setLeverage = 1;
     await binance.futuresLeverage(symbol, setLeverage);
 
-    const candles = await fetchCandlestickData(binance, symbol, interval, 240);
+    const candles = await fetchCandlestickData(binance, symbol, interval, 480);
     const {
       lastBB,
       lastClose,
@@ -351,7 +364,7 @@ async function trade(symbol, interval = '15m') {
       curBB,
       curHigh,
       curLow,
-    } = await calculateIndicators(candles);
+    } = await calculateIndicators(candles, 20, 1.5);
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
