@@ -133,6 +133,11 @@ async function backtest(
     const getBuyCheck = (lastBB, lastLow, lastRSI, lastClose, sma160) => {
       if (position === 'LONG') return false;
 
+      //캔들 몸통이 모두 벗어났을 경우 롱
+      if (lastBB.upper < lastLow && lastClose > sma160) {
+        return true;
+      }
+
       if (lastClose < sma160 && buySignal === true) {
         buySignal = false;
       }
@@ -155,6 +160,11 @@ async function backtest(
 
     const getSellCheck = (lastBB, lastHigh, lastRSI, lastClose, sma160) => {
       if (position === 'SHORT') return false;
+
+      //캔들 몸통이 모두 벗어났을 경우 숏
+      if (lastBB.lower > lastHigh && lastClose < sma160) {
+        return true;
+      }
 
       if (lastClose > sma160 && sellSignal === true) {
         sellSignal = false;

@@ -227,6 +227,15 @@ const getBuyCheck = (
 ) => {
   if (positionAmt > 0) return false;
 
+  //캔들 몸통이 모두 벗어났을 경우 롱
+  if (lastBB.upper < lastLow && lastClose > sma160) {
+    sendMessage(
+      `캔들 몸통이 모두 벗어났고, 이평선 위에 있는 상황이라 롱 포지션 진입`
+    );
+    buySignal = false;
+    return true;
+  }
+
   if (lastClose < sma160 && buySignal === true) {
     sendMessage(`이평선 아래로 가격이 떨어져서 buySignal 초기화`);
     buySignal = false;
@@ -259,6 +268,15 @@ const getSellCheck = (
   sma160
 ) => {
   if (positionAmt < 0) return false;
+
+  //캔들 몸통이 모두 벗어났을 경우 숏
+  if (lastBB.lower > lastHigh && lastClose < sma160) {
+    sendMessage(
+      `캔들 몸통이 모두 벗어났고, 이평선 아래에 있는 상황이라 숏 포지션 진입`
+    );
+    sellSignal = false;
+    return true;
+  }
 
   if (lastClose > sma160 && sellSignal === true) {
     sendMessage(`이평선 위로 가격이 올라가서 sellSignal 초기화`);
