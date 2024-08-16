@@ -31,6 +31,9 @@ async function backtest(
   const rsiBuyThreshold = 40; // RSI 과매도 조건
   const rsiSellThreshold = 60; // RSI 과매수 조건
 
+  let totalTradeCount = 0;
+  let profitTradeCount = 0;
+
   let closeSignal = false;
 
   try {
@@ -243,13 +246,16 @@ async function backtest(
             closeSignal = false;
 
             // 롱 포지션 종료
-            currentBalance += profit;
+            const fee = currentBalance * 0.001;
+            currentBalance += profit - fee;
+
             results.push({
               date: closedDate,
               action: 'SELL LONG position closed-2',
               price: lastClose,
               profit: profit,
               profitPercent: profitPercent,
+              fee,
               totalBalance: currentBalance,
               stopTakeCheck,
               changedWave,
@@ -258,6 +264,8 @@ async function backtest(
 
             bbCheck = false;
             position = null;
+            totalTradeCount++;
+            if (profit > 0) profitTradeCount++;
           }
         } else if (position === 'SHORT') {
           const profit =
@@ -288,13 +296,16 @@ async function backtest(
             closeSignal = false;
 
             // 숏 포지션 종료
-            currentBalance += profit;
+            const fee = currentBalance * 0.001;
+            currentBalance += profit - fee;
+
             results.push({
               date: closedDate,
               action: 'BUY SHORT position closed-2',
               price: lastClose,
               profit: profit,
               profitPercent: profitPercent,
+              fee,
               totalBalance: currentBalance,
               stopTakeCheck,
               changedWave,
@@ -303,6 +314,8 @@ async function backtest(
 
             bbCheck = false;
             position = null;
+            totalTradeCount++;
+            if (profit > 0) profitTradeCount++;
           }
         }
       } catch (error) {
@@ -312,6 +325,11 @@ async function backtest(
     }
 
     for (let i = 320; i < candles.length; i++) {
+      //console process percent
+      if (i % 1000 === 0) {
+        console.log(`${((i / candles.length) * 100).toFixed(2)}%`);
+      }
+
       const candleSlice = candles.slice(i - 320, i);
       const indicators = calculateIndicators(candleSlice, 20, 1.5);
       const {
@@ -413,6 +431,7 @@ async function backtest(
           { id: 'price', title: 'PRICE' },
           { id: 'profit', title: 'PROFIT' },
           { id: 'profitPercent', title: 'PROFIT_PERCENT' },
+          { id: 'fee', title: 'FEE' },
           { id: 'stopLossPrice', title: 'STOP_LOSS' },
           { id: 'takeProfitPrice', title: 'TAKE_PROFIT' },
           { id: 'stopTakeCheck', title: 'STOP_TAKE_CHECK' },
@@ -428,6 +447,13 @@ async function backtest(
         console.log('Backtest results saved to backtest_results.csv');
       });
     }
+
+    console.log(
+      `totalTradeCount : ${totalTradeCount}, profitTradeCount : ${profitTradeCount}, lossTradeCount: ${
+        totalTradeCount - profitTradeCount
+      }
+        `
+    );
 
     return currentBalance; // 현재 잔액을 반환
   } catch (error) {
@@ -567,7 +593,7 @@ async function optimizeParameters() {
 
 // 백테스트 실행
 // optimizeParameters();
-// onceBacktest();
+onceBacktest();
 
 exports.backtest = {
   backtest,
