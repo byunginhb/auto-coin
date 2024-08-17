@@ -221,6 +221,8 @@ const getBuyCheck = (
   lastBB,
   lastLow,
   lastRSI,
+  curBB,
+  curLow,
   positionAmt,
   lastClose,
   sma160
@@ -242,7 +244,7 @@ const getBuyCheck = (
   }
 
   if (buySignal) {
-    if (lastLow > lastBB.lower) {
+    if (curLow > curBB.lower) {
       buySignal = false;
       return true;
     } else {
@@ -263,6 +265,8 @@ const getSellCheck = (
   lastBB,
   lastHigh,
   lastRSI,
+  curBB,
+  curHigh,
   positionAmt,
   lastClose,
   sma160
@@ -284,7 +288,7 @@ const getSellCheck = (
   }
 
   if (sellSignal) {
-    if (lastHigh < lastBB.upper) {
+    if (curHigh < curBB.upper) {
       sellSignal = false;
       return true;
     } else {
@@ -341,7 +345,7 @@ const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
     curBB,
     curHigh,
     curLow,
-  } = await calculateIndicators(candles, 20, 1.5);
+  } = await calculateIndicators(candles, 20, 1);
 
   sendMessage(`현재 상태
 lastBB.lower: ${lastBB.lower},
@@ -382,7 +386,7 @@ async function trade(symbol, interval = '15m') {
       curBB,
       curHigh,
       curLow,
-    } = await calculateIndicators(candles, 20, 1.5);
+    } = await calculateIndicators(candles, 20, 1);
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
@@ -406,6 +410,8 @@ async function trade(symbol, interval = '15m') {
       lastBB,
       lastLow,
       lastRSI,
+      curBB,
+      curLow,
       positionAmt,
       lastClose,
       sma160
@@ -415,6 +421,8 @@ async function trade(symbol, interval = '15m') {
       lastBB,
       lastHigh,
       lastRSI,
+      curBB,
+      curHigh,
       positionAmt,
       lastClose,
       sma160

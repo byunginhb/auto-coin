@@ -28,8 +28,8 @@ async function backtest(
   let takeProfitPrice = 0;
   let buySignal = false;
   let sellSignal = false;
-  const rsiBuyThreshold = 40; // RSI 과매도 조건
-  const rsiSellThreshold = 60; // RSI 과매수 조건
+  const rsiBuyThreshold = 35; // RSI 과매도 조건
+  const rsiSellThreshold = 66; // RSI 과매수 조건
 
   let totalTradeCount = 0;
   let profitTradeCount = 0;
@@ -133,7 +133,15 @@ async function backtest(
       return { stopLoss, takeProfit };
     };
 
-    const getBuyCheck = (lastBB, lastLow, lastRSI, lastClose, sma160) => {
+    const getBuyCheck = (
+      lastBB,
+      lastLow,
+      lastRSI,
+      curBB,
+      curLow,
+      lastClose,
+      sma160
+    ) => {
       if (position === 'LONG') return false;
 
       //캔들 몸통이 모두 벗어났을 경우 롱
@@ -146,7 +154,7 @@ async function backtest(
       }
 
       if (buySignal) {
-        if (lastLow > lastBB.lower) {
+        if (curLow > curBB.lower) {
           buySignal = false;
           return true;
         } else {
@@ -161,7 +169,15 @@ async function backtest(
       return false;
     };
 
-    const getSellCheck = (lastBB, lastHigh, lastRSI, lastClose, sma160) => {
+    const getSellCheck = (
+      lastBB,
+      lastHigh,
+      lastRSI,
+      curBB,
+      curHigh,
+      lastClose,
+      sma160
+    ) => {
       if (position === 'SHORT') return false;
 
       //캔들 몸통이 모두 벗어났을 경우 숏
@@ -174,7 +190,7 @@ async function backtest(
       }
 
       if (sellSignal) {
-        if (lastHigh < lastBB.upper) {
+        if (curHigh < curBB.upper) {
           sellSignal = false;
           return true;
         } else {
@@ -327,11 +343,17 @@ async function backtest(
     for (let i = 320; i < candles.length; i++) {
       //console process percent
       if (i % 1000 === 0) {
-        console.log(`${((i / candles.length) * 100).toFixed(2)}%`);
+        console.log(
+          `${((i / candles.length) * 100).toFixed(
+            2
+          )}%, totalBalance : ${currentBalance} date: ${convertToKoreanTimeZone(
+            new Date(candles[i][0])
+          )}`
+        );
       }
 
       const candleSlice = candles.slice(i - 320, i);
-      const indicators = calculateIndicators(candleSlice, 20, 1.5);
+      const indicators = calculateIndicators(candleSlice, 20, 1);
       const {
         lastBB,
         lastClose,
@@ -344,12 +366,22 @@ async function backtest(
         curLow,
       } = indicators;
 
-      const buyCheck = getBuyCheck(lastBB, lastLow, lastRSI, lastClose, sma160);
+      const buyCheck = getBuyCheck(
+        lastBB,
+        lastLow,
+        lastRSI,
+        curBB,
+        curLow,
+        lastClose,
+        sma160
+      );
 
       const sellCheck = getSellCheck(
         lastBB,
         lastHigh,
         lastRSI,
+        curBB,
+        curHigh,
         lastClose,
         sma160
       );
@@ -432,8 +464,6 @@ async function backtest(
           { id: 'profit', title: 'PROFIT' },
           { id: 'profitPercent', title: 'PROFIT_PERCENT' },
           { id: 'fee', title: 'FEE' },
-          { id: 'stopLossPrice', title: 'STOP_LOSS' },
-          { id: 'takeProfitPrice', title: 'TAKE_PROFIT' },
           { id: 'stopTakeCheck', title: 'STOP_TAKE_CHECK' },
           { id: 'changedWave', title: 'CHANGED_WAVE' },
           { id: 'bbCheck', title: 'BB_CHECK' },
@@ -593,7 +623,7 @@ async function optimizeParameters() {
 
 // 백테스트 실행
 // optimizeParameters();
-onceBacktest();
+// onceBacktest();
 
 exports.backtest = {
   backtest,
