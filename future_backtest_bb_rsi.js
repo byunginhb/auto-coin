@@ -239,15 +239,15 @@ async function backtest(
       try {
         if (position === 'LONG') {
           const profit =
-            (lastClose - entryPrice) * (currentBalance / entryPrice);
+            (curStart - entryPrice) * (currentBalance / entryPrice);
           const profitPercent = (profit / currentBalance) * 100;
 
           stopTakeCheck =
-            Number(lastClose) <= Number(stopLossPrice) ||
-            Number(lastClose) >= Number(takeProfitPrice);
+            Number(curStart) <= Number(stopLossPrice) ||
+            Number(curStart) >= Number(takeProfitPrice);
 
           //추세 변환 체크
-          changedWave = Number(lastClose) < sma160;
+          changedWave = Number(curStart) < sma160;
           closeCheck = stopTakeCheck || changedWave;
 
           if (closeSignal) {
@@ -275,7 +275,7 @@ async function backtest(
             results.push({
               date: closedDate,
               action: 'SELL LONG position closed-2',
-              price: lastClose,
+              price: curStart,
               profit: profit,
               profitPercent: profitPercent,
               fee,
@@ -292,15 +292,15 @@ async function backtest(
           }
         } else if (position === 'SHORT') {
           const profit =
-            (entryPrice - lastClose) * (currentBalance / entryPrice);
+            (entryPrice - curStart) * (currentBalance / entryPrice);
           const profitPercent = (profit / currentBalance) * 100;
 
           stopTakeCheck =
-            Number(lastClose) >= Number(stopLossPrice) ||
-            Number(lastClose) <= Number(takeProfitPrice);
+            Number(curStart) >= Number(stopLossPrice) ||
+            Number(curStart) <= Number(takeProfitPrice);
 
           //추세 변환 체크
-          changedWave = Number(lastClose) > sma160;
+          changedWave = Number(curStart) > sma160;
           closeCheck = stopTakeCheck || changedWave;
 
           if (closeSignal) {
@@ -328,7 +328,7 @@ async function backtest(
             results.push({
               date: closedDate,
               action: 'BUY SHORT position closed-2',
-              price: lastClose,
+              price: curStart,
               profit: profit,
               profitPercent: profitPercent,
               fee,
@@ -402,7 +402,7 @@ async function backtest(
         if (buyCheck) {
           // 롱 포지션 진입
           position = 'LONG';
-          entryPrice = lastClose;
+          entryPrice = curStart;
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'LONG',
             candles.slice(i - 20, i),
@@ -425,7 +425,7 @@ async function backtest(
         } else if (sellCheck) {
           // 숏 포지션 진입
           position = 'SHORT';
-          entryPrice = lastClose;
+          entryPrice = curStart;
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'SHORT',
             candles.slice(i - 20, i),
