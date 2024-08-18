@@ -35,9 +35,11 @@ const fetchCandlestickData = async (binance, symbol, interval, limit) => {
 // 기술적 지표 계산 (RSI, 볼린저 밴드)
 const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
   try {
-    const closes = candles.map((c) => parseFloat(c[4]));
+    const starts = candles.map((c) => parseFloat(c[1]));
     const highs = candles.map((c) => parseFloat(c[2]));
     const lows = candles.map((c) => parseFloat(c[3]));
+    const closes = candles.map((c) => parseFloat(c[4]));
+
     const rsiValues = RSI.calculate({ period: 14, values: closes });
     const bbValues = BollingerBands.calculate({
       period: bbPeriod,
@@ -58,6 +60,7 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       lastRSI: rsiValues[rsiValues.length - 2],
       lastBB: bbValues[bbValues.length - 2],
       lastClose: closes[closes.length - 2],
+      lastStart: starts[starts.length - 2],
       lastHigh: highs[closes.length - 2],
       lastLow: lows[closes.length - 2],
       stochasticRSI: StochasticRSIs[StochasticRSIs.length - 2],
@@ -67,6 +70,8 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       curBB: bbValues[bbValues.length - 1],
       curHigh: highs[highs.length - 1],
       curLow: lows[lows.length - 1],
+      curStart: starts[starts.length - 1],
+      curClose: closes[closes.length - 1],
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);

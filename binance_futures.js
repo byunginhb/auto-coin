@@ -131,7 +131,16 @@ const checkBB = (positionAmt, lastBB, curHigh, curLow) => {
 };
 
 // 포지션 모니터링 손절,익절 체크
-async function checkStopLoss(lastBB, curHigh, curLow, sma160) {
+async function checkStopLoss(
+  curBB,
+  curHigh,
+  curLow,
+  curStart,
+  curClose,
+  lastHigh,
+  lastLow,
+  sma160
+) {
   try {
     const { positions } = await getFutureAccountInfo(binance);
 
@@ -169,15 +178,18 @@ async function checkStopLoss(lastBB, curHigh, curLow, sma160) {
       if (closeSignal) {
         // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
         if (
-          (positionAmt > 0 && curHigh < lastBB.upper) ||
-          (positionAmt < 0 && curLow > lastBB.lower)
+          (positionAmt > 0 &&
+            (curHigh < curBB.upper ||
+              (lastHigh > curHigh && curStart > curClose))) ||
+          (positionAmt < 0 &&
+            (curLow > curBB.lower || (lastLow < curLow && curStart < curClose)))
         ) {
           closeCheck = true;
           closeSignal = false;
         }
       } else {
         // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
-        checkBB(positionAmt, lastBB, curHigh, curLow);
+        checkBB(positionAmt, curBB, curHigh, curLow);
       }
 
       if (closeCheck) {
@@ -187,16 +199,16 @@ async function checkStopLoss(lastBB, curHigh, curLow, sma160) {
 포지션 : ${positionAmt > 0 ? '롱' : '숏'},
 curHigh: ${curHigh},
 curLow: ${curLow},
-lastBB.upper: ${lastBB.upper},
-lastBB.lower: ${lastBB.lower},
+curBB.upper: ${curBB.upper},
+curBB.lower: ${curBB.lower},
 현재가 : ${markPrice},
 stopLossPrice: ${stopLossPrice},
 takeProfitPrice: ${takeProfitPrice},
 추세 변환: ${changedWave},
 손절, 손익 : ${stopTakeCheck},
 볼린저 밴드 : ${
-          (positionAmt > 0 && curHigh < lastBB.upper) ||
-          (positionAmt < 0 && curLow > lastBB.lower)
+          (positionAmt > 0 && curHigh < curBB.upper) ||
+          (positionAmt < 0 && curLow > curBB.lower)
         }`);
 
         await closePosition(symbol, positionAmt);
@@ -345,6 +357,8 @@ const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
     curBB,
     curHigh,
     curLow,
+    curStart,
+    curClose,
   } = await calculateIndicators(candles, 20, 1);
 
   sendMessage(`현재 상태
@@ -358,6 +372,8 @@ curBB.lower: ${curBB.lower},
 curBB.upper: ${curBB.upper},
 curHigh: ${curHigh},
 curLow: ${curLow},
+curStart: ${curStart},
+curClose: ${curClose},
 sma160: ${sma160}
 `);
 };
@@ -386,6 +402,8 @@ async function trade(symbol, interval = '15m') {
       curBB,
       curHigh,
       curLow,
+      curStart,
+      curClose,
     } = await calculateIndicators(candles, 20, 1);
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
@@ -476,7 +494,16 @@ takeProfitPrice : ${takeProfitPrice}
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         }
       } else {
-        await checkStopLoss(curBB, curHigh, curLow, sma160);
+        await checkStopLoss(
+          curBB,
+          curHigh,
+          curLow,
+          curStart,
+          curClose,
+          lastHigh,
+          lastLow,
+          sma160
+        );
       }
     } catch (error) {
       sendMessage(`포지션 진입시 에러 발생: ${error.message}`);

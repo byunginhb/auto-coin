@@ -222,6 +222,10 @@ async function backtest(
       curBB,
       curHigh,
       curLow,
+      curStart,
+      curClose,
+      lastHigh,
+      lastLow,
       lastClose,
       closedDate,
       sma160
@@ -242,13 +246,16 @@ async function backtest(
             Number(lastClose) <= Number(stopLossPrice) ||
             Number(lastClose) >= Number(takeProfitPrice);
 
+          //추세 변환 체크
           changedWave = Number(lastClose) < sma160;
           closeCheck = stopTakeCheck || changedWave;
 
-          //추세 변환 체크
           if (closeSignal) {
             // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
-            if (position === 'LONG' && curHigh < curBB.upper) {
+            if (
+              curHigh < curBB.upper ||
+              (lastHigh > curHigh && curStart > curClose)
+            ) {
               closeCheck = true;
               closeSignal = false;
               bbCheck = true;
@@ -292,13 +299,16 @@ async function backtest(
             Number(lastClose) >= Number(stopLossPrice) ||
             Number(lastClose) <= Number(takeProfitPrice);
 
+          //추세 변환 체크
           changedWave = Number(lastClose) > sma160;
           closeCheck = stopTakeCheck || changedWave;
 
-          //추세 변환 체크
           if (closeSignal) {
             // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
-            if (position === 'SHORT' && curLow > curBB.lower) {
+            if (
+              curLow > curBB.lower ||
+              (lastLow < curLow && curStart < curClose)
+            ) {
               closeCheck = true;
               closeSignal = false;
               bbCheck = true;
@@ -364,6 +374,8 @@ async function backtest(
         curBB,
         curHigh,
         curLow,
+        curStart,
+        curClose,
       } = indicators;
 
       const buyCheck = getBuyCheck(
@@ -442,6 +454,10 @@ async function backtest(
           curBB,
           curHigh,
           curLow,
+          curStart,
+          curClose,
+          lastHigh,
+          lastLow,
           lastClose,
           convertToKoreanTimeZone(new Date(candles[i][0])),
           sma160
