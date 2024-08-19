@@ -5,6 +5,8 @@ const {
   StochasticRSI,
 } = require('technicalindicators');
 const axios = require('axios');
+const { coinDB } = require('./db');
+const dayjs = require('dayjs');
 
 //선물 계좌 정보 가져오기
 const getFutureAccountInfo = async (binance) => {
@@ -125,6 +127,14 @@ const sendUSDTBalance = async (binance, save = false) => {
       }
     }
 
+    //특정 날짜의 거래 데이터 조회
+    const data = await coinDB.getTradeDataByDate(
+      dayjs().subtract(1, 'day').format('YYYY-MM-DD')
+    );
+    if (data) {
+      console.log('data:', data);
+    }
+
     console.log(
       `Total asset value in USDT (Spot + Futures): ${totalValueInUSDT.toFixed(
         2
@@ -142,6 +152,8 @@ const sendUSDTBalance = async (binance, save = false) => {
           params: {
             currentPrice: totalValueInUSDT.toFixed(2),
             btcPrice: btcPrice.toFixed(2), // BTC 가격 추가
+            profitCount: data?.profitCount || 0,
+            lossCount: data?.lossCount || 0,
           },
         }
       );

@@ -14,6 +14,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
 const cron = require('node-cron');
+const { coinDB } = require('./db');
 
 // back test
 // const future_backtest = require('./future_backtest').backtest;
@@ -83,7 +84,7 @@ app.get('/trade/end', (req, res) => {
   res.send('trade end');
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
   if (bot === null) return;
 

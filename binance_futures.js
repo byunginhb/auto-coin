@@ -1,5 +1,6 @@
 require('dotenv').config();
 const phase = process.env.ENV_PHASE || 'production';
+const dayjs = require('dayjs');
 const Binance = require('node-binance-api');
 const coinDB = require('./db').coinDB;
 
@@ -81,6 +82,7 @@ takeProfitPrice: ${takeProfitPrice}`
 const sendUSDTBalance = async () => {
   const { usdtBalance } = await getFutureAccountInfo(binance);
   sendMessage(`현재 USDT 잔액: ${usdtBalance}`);
+  return usdtBalance;
 };
 
 // 포지션 오픈
@@ -212,11 +214,16 @@ takeProfitPrice: ${takeProfitPrice},
         }`);
 
         await closePosition(symbol, positionAmt);
-        await sendUSDTBalance();
+        const curBalance = await sendUSDTBalance();
+        const fee = curBalance * 0.001;
+        await coinDB.upsertTradeData(
+          unrealizedProfit - fee,
+          dayjs().format('YYYY-MM-DD')
+        );
 
         sendMessage(
           `${symbol} 포지션 청산
-실현손익: ${unrealizedProfit.toFixed(2)}USDT`
+실현손익: ${(unrealizedProfit - fee).toFixed(2)}USDT`
         );
         await currentCheck(symbol);
       }
