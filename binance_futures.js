@@ -389,6 +389,11 @@ sma160: ${sma160}
 
 // 트레이딩 함수
 async function trade(symbol, interval = '15m') {
+  const minute = parseInt(dayjs().format('mm'));
+  if (minute % 15 !== 0 || dayjs().format('ss') >= 10) {
+    return;
+  }
+
   try {
     if (!isInitDB) {
       await coinDB.setup();
@@ -533,10 +538,7 @@ async function startTrade(symbol = 'BTCUSDT', interval = '15m') {
 
     trade(symbol, interval);
 
-    intervalHandler = setInterval(
-      () => trade(symbol, interval),
-      60 * 1000 * 15
-    );
+    intervalHandler = setInterval(() => trade(symbol, interval), 5 * 1000);
     sendMessage('트레이딩을 시작합니다.');
   } catch (error) {
     sendMessage('Trade execution start failed:', error);

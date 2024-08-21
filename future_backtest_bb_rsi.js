@@ -4,6 +4,9 @@ const { calculateIndicators } = require('./binance_common').binance_common;
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const fs = require('fs');
 const path = require('path');
+const { sma } = require('technicalindicators');
+
+const logMode = false;
 
 // Binance API 객체 생성
 const binance = new Binance().options({
@@ -135,17 +138,38 @@ async function backtest(
 
     const getBuyCheck = (
       lastBB,
+      lastHigh,
       lastLow,
-      lastRSI,
-      curBB,
-      curLow,
       lastClose,
-      sma160
+      curLow,
+      curHigh,
+      sma160,
+      curBB,
+      curSma160
     ) => {
+      const standardDiff = lastClose * 0.01;
       if (position === 'LONG') return false;
 
+      //curBB의 upper와 lower의 격차가 1% 미만일 경우 return
+      if (curBB.upper - curBB.lower < lastClose * 0.01) {
+        buySignal = false;
+        return false;
+      }
+
+      if (curBB.lower - curSma160 < standardDiff) {
+        buySignal = false;
+        return false;
+      }
+
+      //curSma160이 curBB 사이에 있으면 return;
+      if (curSma160 > curBB.lower && curSma160 < curBB.upper) {
+        buySignal = false;
+        return false;
+      }
+
       //캔들 몸통이 모두 벗어났을 경우 롱
-      if (lastBB.upper < lastLow && lastClose > sma160) {
+      if (lastBB.upper < lastLow && lastClose > sma160 && lastHigh < curHigh) {
+        buySignal = false;
         return true;
       }
 
@@ -172,16 +196,30 @@ async function backtest(
     const getSellCheck = (
       lastBB,
       lastHigh,
-      lastRSI,
-      curBB,
-      curHigh,
+      lastLow,
       lastClose,
-      sma160
+      curLow,
+      curHigh,
+      sma160,
+      curBB,
+      curSma160
     ) => {
+      const standardDiff = lastClose * 0.01;
       if (position === 'SHORT') return false;
 
+      if (curBB.upper - curBB.lower < standardDiff) {
+        sellSignal = false;
+        return false;
+      }
+
+      if (curSma160 - curBB.upper < standardDiff) {
+        sellSignal = false;
+        return false;
+      }
+
       //캔들 몸통이 모두 벗어났을 경우 숏
-      if (lastBB.lower > lastHigh && lastClose < sma160) {
+      if (lastBB.lower > lastHigh && lastClose < sma160 && lastLow > curLow) {
+        sellSignal = false;
         return true;
       }
 
@@ -214,6 +252,8 @@ async function backtest(
         (position === 'SHORT' && curLow < curBB.lower)
       ) {
         closeSignal = true;
+      } else {
+        closeSignal = false;
       }
     };
 
@@ -224,11 +264,14 @@ async function backtest(
       curLow,
       curStart,
       curClose,
+      lastBB,
       lastHigh,
       lastLow,
+      lastStart,
       lastClose,
       closedDate,
-      sma160
+      sma160,
+      marketPrice
     ) {
       // 손절, 익절 구간 체크
       let closeCheck = false;
@@ -239,16 +282,18 @@ async function backtest(
       try {
         if (position === 'LONG') {
           const profit =
-            (curStart - entryPrice) * (currentBalance / entryPrice);
+            (marketPrice - entryPrice) * (currentBalance / entryPrice);
           const profitPercent = (profit / currentBalance) * 100;
 
           stopTakeCheck =
-            Number(curStart) <= Number(stopLossPrice) ||
-            Number(curStart) >= Number(takeProfitPrice);
+            Number(marketPrice) <= Number(stopLossPrice) ||
+            Number(marketPrice) >= Number(takeProfitPrice);
 
           //추세 변환 체크
-          changedWave = Number(curStart) < sma160;
+          changedWave = Number(marketPrice) < sma160;
           closeCheck = stopTakeCheck || changedWave;
+
+          checkBB(lastBB, lastHigh, lastLow);
 
           if (closeSignal) {
             // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
@@ -260,9 +305,6 @@ async function backtest(
               closeSignal = false;
               bbCheck = true;
             }
-          } else {
-            // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
-            checkBB(curBB, curHigh, curLow);
           }
 
           if (closeCheck) {
@@ -270,12 +312,13 @@ async function backtest(
 
             // 롱 포지션 종료
             const fee = currentBalance * 0.001;
-            currentBalance += profit - fee;
+            currentBalance += profit;
+            currentBalance -= fee;
 
             results.push({
               date: closedDate,
               action: 'SELL LONG position closed-2',
-              price: curStart,
+              price: marketPrice,
               profit: profit,
               profitPercent: profitPercent,
               fee,
@@ -292,7 +335,7 @@ async function backtest(
           }
         } else if (position === 'SHORT') {
           const profit =
-            (entryPrice - curStart) * (currentBalance / entryPrice);
+            (entryPrice - marketPrice) * (currentBalance / entryPrice);
           const profitPercent = (profit / currentBalance) * 100;
 
           stopTakeCheck =
@@ -302,6 +345,8 @@ async function backtest(
           //추세 변환 체크
           changedWave = Number(curStart) > sma160;
           closeCheck = stopTakeCheck || changedWave;
+
+          checkBB(lastBB, lastHigh, lastLow);
 
           if (closeSignal) {
             // 볼린저 밴드 상단(롱), 하단(숏) 돌파 신호 받은 상태
@@ -313,9 +358,6 @@ async function backtest(
               closeSignal = false;
               bbCheck = true;
             }
-          } else {
-            // 볼린저 밴드 상단(롱), 하단(숏) 돌파 체크
-            checkBB(curBB, curHigh, curLow);
           }
 
           if (closeCheck) {
@@ -323,12 +365,13 @@ async function backtest(
 
             // 숏 포지션 종료
             const fee = currentBalance * 0.001;
-            currentBalance += profit - fee;
+            currentBalance += profit;
+            currentBalance -= fee;
 
             results.push({
               date: closedDate,
               action: 'BUY SHORT position closed-2',
-              price: curStart,
+              price: marketPrice,
               profit: profit,
               profitPercent: profitPercent,
               fee,
@@ -356,53 +399,54 @@ async function backtest(
         console.log(
           `${((i / candles.length) * 100).toFixed(
             2
-          )}%, totalBalance : ${currentBalance} date: ${convertToKoreanTimeZone(
-            new Date(candles[i][0])
-          )}`
+          )}%, totalBalance : ${currentBalance.toFixed(
+            2
+          )} date: ${convertToKoreanTimeZone(new Date(candles[i - 1][0]))}`
         );
       }
 
       const candleSlice = candles.slice(i - 320, i);
       const indicators = calculateIndicators(candleSlice, 20, 1);
-      const {
-        lastBB,
-        lastClose,
-        lastLow,
-        lastHigh,
-        lastRSI,
-        sma160,
-        curBB,
-        curHigh,
-        curLow,
-        curStart,
-        curClose,
-      } = indicators;
+      const { rsi, bb, closes, starts, highs, lows, sma60, sma120, sma160 } =
+        indicators;
 
       const buyCheck = getBuyCheck(
-        lastBB,
-        lastLow,
-        lastRSI,
-        curBB,
-        curLow,
-        lastClose,
-        sma160
+        bb.at(-3),
+        highs.at(-3),
+        lows.at(-3),
+        closes.at(-3),
+        lows.at(-2),
+        highs.at(-2),
+        sma160.at(-3),
+        bb.at(-2),
+        sma160.at(-2)
       );
 
       const sellCheck = getSellCheck(
-        lastBB,
-        lastHigh,
-        lastRSI,
-        curBB,
-        curHigh,
-        lastClose,
-        sma160
+        bb.at(-3),
+        highs.at(-3),
+        lows.at(-3),
+        closes.at(-3),
+        lows.at(-2),
+        highs.at(-2),
+        sma160.at(-3),
+        bb.at(-2),
+        sma160.at(-2)
       );
+
+      if (logMode) {
+        console.log(
+          ` buyCheck : ${buyCheck}, sellCheck : ${sellCheck},date: ${convertToKoreanTimeZone(
+            new Date(candles[i - 1][0])
+          )}`
+        );
+      }
 
       if (position === null) {
         if (buyCheck) {
           // 롱 포지션 진입
           position = 'LONG';
-          entryPrice = curStart;
+          entryPrice = starts.at(-1);
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'LONG',
             candles.slice(i - 20, i),
@@ -411,21 +455,25 @@ async function backtest(
           stopLossPrice = stopLoss;
           takeProfitPrice = takeProfit;
           results.push({
-            date: convertToKoreanTimeZone(new Date(candles[i][0])),
+            date: convertToKoreanTimeZone(new Date(candles[i - 1][0])),
             action: 'BUY LONG position entered',
             price: entryPrice,
             profit: 0,
             stopLossPrice,
             takeProfitPrice,
-            sma160,
+            sma160: sma160.at(-1),
             totalBalance: currentBalance,
           });
+
+          if (logMode) {
+            console.log(results.at(-1));
+          }
 
           continue;
         } else if (sellCheck) {
           // 숏 포지션 진입
           position = 'SHORT';
-          entryPrice = curStart;
+          entryPrice = starts.at(-1);
           const { stopLoss, takeProfit } = calculateStopLossTakeProfit(
             'SHORT',
             candles.slice(i - 20, i),
@@ -436,31 +484,38 @@ async function backtest(
           takeProfitPrice = takeProfit;
 
           results.push({
-            date: convertToKoreanTimeZone(new Date(candles[i][0])),
+            date: convertToKoreanTimeZone(new Date(candles[i - 1][0])),
             action: 'SELL SHORT position entered',
             price: entryPrice,
             profit: 0,
             stopLossPrice,
             takeProfitPrice,
-            sma160,
+            sma160: sma160.at(-1),
             totalBalance: currentBalance,
           });
+
+          if (logMode) {
+            console.log(results.at(-1));
+          }
 
           continue;
         }
       } else {
         //손절, 익절 체크
         checkStopLoss(
-          curBB,
-          curHigh,
-          curLow,
-          curStart,
-          curClose,
-          lastHigh,
-          lastLow,
-          lastClose,
-          convertToKoreanTimeZone(new Date(candles[i][0])),
-          sma160
+          bb.at(-2),
+          highs.at(-2),
+          lows.at(-2),
+          starts.at(-2),
+          closes.at(-2),
+          bb.at(-3),
+          highs.at(-3),
+          lows.at(-3),
+          starts.at(-3),
+          closes.at(-3),
+          convertToKoreanTimeZone(new Date(candles[i - 1][0])),
+          sma160.at(-1),
+          starts.at(-1)
         );
       }
     }
@@ -472,7 +527,7 @@ async function backtest(
     if (saveCSV) {
       // 백테스트 결과를 저장할 CSV 작성자 설정
       const csvWriter = createCsvWriter({
-        path: `future_backtest_results_${symbol}-${Date.now().toString()}.csv`,
+        path: `backtest_results_${symbol}-${Date.now().toString()}.csv`,
         header: [
           { id: 'date', title: 'DATE' },
           { id: 'action', title: 'ACTION' },
@@ -556,7 +611,7 @@ async function onceBacktest() {
     //'XRPUSDT',
     '15m',
     '2021-01-01',
-    '2024-08-12',
+    '2021-03-01',
     true
   );
   console.log(finalBalance);
@@ -639,7 +694,7 @@ async function optimizeParameters() {
 
 // 백테스트 실행
 // optimizeParameters();
-// onceBacktest();
+onceBacktest();
 
 exports.backtest = {
   backtest,
