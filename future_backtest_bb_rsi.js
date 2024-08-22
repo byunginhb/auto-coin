@@ -147,11 +147,11 @@ async function backtest(
       curBB,
       curSma160
     ) => {
-      const standardDiff = lastClose * 0.01;
+      const standardDiff = lastClose * 0.008;
       if (position === 'LONG') return false;
 
       //curBB의 upper와 lower의 격차가 1% 미만일 경우 return
-      if (curBB.upper - curBB.lower < lastClose * 0.01) {
+      if (curBB.upper - curBB.lower < standardDiff) {
         buySignal = false;
         return false;
       }
@@ -163,6 +163,12 @@ async function backtest(
 
       //curSma160이 curBB 사이에 있으면 return;
       if (curSma160 > curBB.lower && curSma160 < curBB.upper) {
+        buySignal = false;
+        return false;
+      }
+
+      //candle 사이에 이평선 있어도 리턴
+      if (curSma160 > curLow && curSma160 < curHigh) {
         buySignal = false;
         return false;
       }
@@ -204,7 +210,7 @@ async function backtest(
       curBB,
       curSma160
     ) => {
-      const standardDiff = lastClose * 0.01;
+      const standardDiff = lastClose * 0.008;
       if (position === 'SHORT') return false;
 
       if (curBB.upper - curBB.lower < standardDiff) {
@@ -221,6 +227,12 @@ async function backtest(
       if (lastBB.lower > lastHigh && lastClose < sma160 && lastLow > curLow) {
         sellSignal = false;
         return true;
+      }
+
+      //candle 사이에 이평선 있어도 리턴
+      if (curSma160 > curLow && curSma160 < curHigh) {
+        buySignal = false;
+        return false;
       }
 
       if (lastClose > sma160 && sellSignal === true) {
@@ -611,7 +623,7 @@ async function onceBacktest() {
     //'XRPUSDT',
     '15m',
     '2021-01-01',
-    '2021-03-01',
+    '2021-03-31',
     true
   );
   console.log(finalBalance);
@@ -694,7 +706,7 @@ async function optimizeParameters() {
 
 // 백테스트 실행
 // optimizeParameters();
-onceBacktest();
+// onceBacktest();
 
 exports.backtest = {
   backtest,
