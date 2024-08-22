@@ -42,7 +42,7 @@ async function backtest(
   try {
     const dataFilePath = path.resolve(
       __dirname,
-      `future_backdata_${symbol}-${start}-${end}-${interval}.json`
+      `backData/future_backdata_${symbol}-${start}-${end}-${interval}.json`
     );
     let candles;
 
@@ -527,7 +527,7 @@ async function backtest(
     if (saveCSV) {
       // 백테스트 결과를 저장할 CSV 작성자 설정
       const csvWriter = createCsvWriter({
-        path: `backtest_results_${symbol}-${Date.now().toString()}.csv`,
+        path: `backTestResult/backtest_results_${symbol}-${Date.now().toString()}.csv`,
         header: [
           { id: 'date', title: 'DATE' },
           { id: 'action', title: 'ACTION' },
