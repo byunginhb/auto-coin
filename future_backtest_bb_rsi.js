@@ -41,8 +41,6 @@ async function backtest(
   let totalTradeCount = 0;
   let profitTradeCount = 0;
 
-  let closeSignal = false;
-
   try {
     const dataFilePath = path.resolve(
       __dirname,
@@ -91,7 +89,7 @@ async function backtest(
           highs.at(-2) > highs.at(-3);
 
         if (candlePlus3Check && candlePlus3WaveCheck) {
-          stopLossPrice = lows.at(-4);
+          stopLossPrice = lows.at(-3);
         }
 
         return false;
@@ -110,9 +108,9 @@ async function backtest(
 
       //정배열 확인
       const plusWave =
-        sma10.at(-7) > sma50.at(-7) &&
-        sma10.at(-7) > sma100.at(-7) &&
-        sma50.at(-7) > sma100.at(-7) &&
+        sma10.at(-6) > sma50.at(-6) &&
+        sma10.at(-6) > sma100.at(-6) &&
+        sma50.at(-6) > sma100.at(-6) &&
         sma10.at(-1) > sma50.at(-1) &&
         sma10.at(-1) > sma100.at(-1) &&
         sma50.at(-1) > sma100.at(-1);
@@ -141,6 +139,7 @@ async function backtest(
       }
 
       if (buySignal && longEntryPrice < highs.at(-1)) {
+        calculateStopTakePrice(starts, lows, -3);
         buySignal = false;
         return true;
       }
@@ -149,18 +148,13 @@ async function backtest(
       if (plusWave) {
         //3개 음봉 이후 3개 양봉 나왔는지 확인
         const candleMinus3rows =
-          starts.at(-7) > closes.at(-7) &&
-          starts.at(-6) > closes.at(-6) &&
-          starts.at(-5) > closes.at(-5);
+          starts.at(-6) > closes.at(-6) && starts.at(-5) > closes.at(-5);
 
         const candlePlus3rows =
-          starts.at(-4) < closes.at(-4) &&
-          starts.at(-3) < closes.at(-3) &&
-          starts.at(-2) < closes.at(-2);
+          starts.at(-3) < closes.at(-3) && starts.at(-2) < closes.at(-2);
 
         if (candleMinus3rows && candlePlus3rows) {
-          calculateStopTakePrice(starts, lows, -4);
-          longEntryPrice = highs.at(-7);
+          longEntryPrice = highs.at(-6);
           buySignal = true;
           return false;
         }
@@ -196,7 +190,7 @@ async function backtest(
           lows.at(-2) < lows.at(-3);
 
         if (candleMinus3Check && candleMinus3WaveCheck) {
-          stopLossPrice = highs.at(-4);
+          stopLossPrice = highs.at(-3);
         }
 
         return false;
@@ -214,9 +208,9 @@ async function backtest(
       };
 
       const minusWave =
-        sma10.at(-7) < sma50.at(-7) &&
-        sma10.at(-7) < sma100.at(-7) &&
-        sma50.at(-7) < sma100.at(-7) &&
+        sma10.at(-6) < sma50.at(-6) &&
+        sma10.at(-6) < sma100.at(-6) &&
+        sma50.at(-6) < sma100.at(-6) &&
         sma10.at(-1) < sma50.at(-1) &&
         sma10.at(-1) < sma100.at(-1) &&
         sma50.at(-1) < sma100.at(-1);
@@ -245,7 +239,7 @@ async function backtest(
       }
 
       if (sellSignal && shortEntryPrice > lows.at(-1)) {
-        calculateStopTakePrice(starts, highs, -4);
+        calculateStopTakePrice(starts, highs, -3);
         sellSignal = false;
         return true;
       }
@@ -254,18 +248,13 @@ async function backtest(
       if (minusWave) {
         //3개 양봉 이후 3개 음봉 나왔는지 확인
         const candlePlus3rows =
-          starts.at(-7) < closes.at(-7) &&
-          starts.at(-6) < closes.at(-6) &&
-          starts.at(-5) < closes.at(-5);
+          starts.at(-6) < closes.at(-6) && starts.at(-5) < closes.at(-5);
 
         const candleMinus3rows =
-          starts.at(-4) > closes.at(-4) &&
-          starts.at(-3) > closes.at(-3) &&
-          starts.at(-2) > closes.at(-2);
+          starts.at(-3) > closes.at(-3) && starts.at(-2) > closes.at(-2);
 
         if (candlePlus3rows && candleMinus3rows) {
-          calculateStopTakePrice(starts, lows, highs);
-          shortEntryPrice = lows.at(-7);
+          shortEntryPrice = lows.at(-6);
           sellSignal = true;
           return false;
         }
@@ -280,6 +269,11 @@ async function backtest(
     // 포지션 모니터링 손절,익절 체크
     function checkStopLoss(closedDate, marketPrice, sma10, sma50, sma100) {
       try {
+        // 손절, 익절 구간 체크
+        let closeCheck = false;
+        let stopTakeCheck = false;
+        let checkWave = false;
+
         if (position === 'LONG') {
           const profit =
             (marketPrice - entryPrice) * (currentBalance / entryPrice);
