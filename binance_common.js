@@ -48,9 +48,9 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       stdDev: bbStd,
       values: closes,
     });
-    const sma60 = SMA.calculate({ period: 60, values: closes });
-    const sma120 = SMA.calculate({ period: 120, values: closes });
-    const sma160 = SMA.calculate({ period: 160, values: closes });
+    const sma10 = SMA.calculate({ period: 10, values: closes });
+    const sma50 = SMA.calculate({ period: 50, values: closes });
+    const sma100 = SMA.calculate({ period: 100, values: closes });
     const StochasticRSIs = StochasticRSI.calculate({
       values: closes,
       rsiPeriod: 14,
@@ -61,30 +61,13 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
     return {
       rsi: rsiValues,
       bb: bbValues,
-      closes: closes,
-      starts: starts,
-      highs: highs,
-      lows: lows,
-      sma60: sma60,
-      sma120: sma120,
-      sma160: sma160,
-
-      // lastRSI: rsiValues[rsiValues.length - 2],
-      // lastBB: bbValues[bbValues.length - 2],
-      // lastClose: closes[closes.length - 2],
-      // lastStart: starts[starts.length - 2],
-      // lastHigh: highs[closes.length - 2],
-      // lastLow: lows[closes.length - 2],
-      // stochasticRSI: StochasticRSIs[StochasticRSIs.length - 2],
-      // sma60: sma60[sma60.length - 2],
-      // sma120: sma120[sma120.length - 2],
-      // sma160: sma160[sma160.length - 2],
-      // curBB: bbValues[bbValues.length - 1],
-      // curHigh: highs[highs.length - 1],
-      // curLow: lows[lows.length - 1],
-      // curStart: starts[starts.length - 1],
-      // curClose: closes[closes.length - 1],
-      // curSma160: sma160[sma160.length - 1],
+      closes,
+      starts,
+      highs,
+      lows,
+      sma10,
+      sma50,
+      sma100,
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
