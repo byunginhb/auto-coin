@@ -181,7 +181,7 @@ async function checkStopLoss(marketPrice, sma10, sma50, sma100) {
 현재가 : ${markPrice},
 stopLossPrice: ${stopLossPrice},
 takeProfitPrice: ${takeProfitPrice},
-추세 변환: ${changedWave},
+추세 변환: ${checkWave},
 손절, 손익 : ${stopTakeCheck},
 실현손익: ${(unrealizedProfit - fee).toFixed(2)}USDT`);
 
@@ -227,13 +227,16 @@ const getBuyCheck = (
       highs.at(-3) > highs.at(-4) &&
       highs.at(-2) > highs.at(-3);
 
-    sendMessage(
-      `롱 포지션 진입 중에 양봉 연속 나와 손절가 수정 ${stopLossPrice} -> ${lows.at(
-        -3
-      )}`
-    );
-
-    if (candlePlus3Check && candlePlus3WaveCheck) {
+    if (
+      candlePlus3Check &&
+      candlePlus3WaveCheck &&
+      lows.at(-3) !== stopLossPrice
+    ) {
+      sendMessage(
+        `롱 포지션 진입 중에 양봉 연속 나와 손절가 수정 ${stopLossPrice} -> ${lows.at(
+          -3
+        )}`
+      );
       stopLossPrice = lows.at(-3);
     }
 
@@ -341,7 +344,11 @@ const getSellCheck = (
       lows.at(-3) < lows.at(-4) &&
       lows.at(-2) < lows.at(-3);
 
-    if (candleMinus3Check && candleMinus3WaveCheck) {
+    if (
+      candleMinus3Check &&
+      candleMinus3WaveCheck &&
+      highs.at(-3) !== stopLossPrice
+    ) {
       sendMessage(
         `숏 포지션 진입 중에 음봉 연속 나와 손절가 수정 ${stopLossPrice} -> ${highs.at(
           -3
