@@ -439,35 +439,23 @@ const getSellCheck = (
 };
 
 const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
-  const candles = await fetchCandlestickData(binance, symbol, interval, 120);
-  const {
-    lastBB,
-    lastClose,
-    lastLow,
-    lastHigh,
-    lastRSI,
-    sma160,
-    curBB,
-    curHigh,
-    curLow,
-    curStart,
-    curClose,
-  } = await calculateIndicators(candles, 20, 1);
+  const candleSlice = await fetchCandlestickData(
+    binance,
+    symbol,
+    interval,
+    120
+  );
+  const { closes, starts, highs, lows, sma10, sma50, sma100 } =
+    await calculateIndicators(candleSlice, 20, 2);
 
   sendMessage(`현재 상태
-lastBB.lower: ${lastBB.lower},
-lastBB.upper: ${lastBB.upper},
-lastClose: ${lastClose},
-lastLow: ${lastLow},
-lastHigh: ${lastHigh},
-lastRSI: ${lastRSI},
-curBB.lower: ${curBB.lower},
-curBB.upper: ${curBB.upper},
-curHigh: ${curHigh},
-curLow: ${curLow},
-curStart: ${curStart},
-curClose: ${curClose},
-sma160: ${sma160}
+starts: ${starts.at(-1)},
+closes: ${closes.at(-1)},
+highs: ${highs.at(-1)},
+lows: ${lows.at(-1)},
+sma10: ${sma10.at(-1)},
+sma50: ${sma50.at(-1)},
+sma100: ${sma100.at(-1)}
 `);
 };
 
