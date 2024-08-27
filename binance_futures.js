@@ -184,8 +184,6 @@ async function checkStopLoss(marketPrice, sma10, sma50, sma100) {
           dayjs().format('YYYY-MM-DD')
         );
 
-        await currentCheck(symbol);
-
         sendMessage(`손절, 익절 조건 충족되어 포지션 Closed
           포지션 : ${positionAmt > 0 ? '롱' : '숏'},
           현재가 : ${markPrice},
