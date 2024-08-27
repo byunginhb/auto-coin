@@ -202,7 +202,7 @@ async function checkStopLoss(marketPrice, sma10, sma50, sma100) {
 }
 
 //매수 체크 로직
-const getBuyCheck = (
+const getBuyCheck = async (
   bb,
   highs,
   lows,
@@ -236,6 +236,7 @@ const getBuyCheck = (
         )}`
       );
       stopLossPrice = lows.at(-3);
+      await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
     }
 
     return false;
@@ -319,7 +320,7 @@ const getBuyCheck = (
 };
 
 //매도 체크 로직
-const getSellCheck = (
+const getSellCheck = async (
   bb,
   highs,
   lows,
@@ -353,6 +354,7 @@ const getSellCheck = (
         )}`
       );
       stopLossPrice = highs.at(-3);
+      await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
     }
 
     return false;
