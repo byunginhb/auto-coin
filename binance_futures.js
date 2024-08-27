@@ -439,7 +439,7 @@ const getSellCheck = (
 };
 
 const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
-  const candles = await fetchCandlestickData(binance, symbol, interval, 480);
+  const candles = await fetchCandlestickData(binance, symbol, interval, 120);
   const {
     lastBB,
     lastClose,
@@ -488,7 +488,7 @@ async function trade(symbol, interval = '30m') {
       binance,
       symbol,
       interval,
-      480
+      120
     );
     const { bb, closes, starts, highs, lows, sma10, sma50, sma100 } =
       await calculateIndicators(candleSlice, 20, 2);
