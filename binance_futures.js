@@ -176,15 +176,6 @@ async function checkStopLoss(marketPrice, sma10, sma50, sma100) {
       closeCheck = stopTakeCheck || !checkWave;
 
       if (closeCheck) {
-        sendMessage(`손절, 익절 조건 충족되어 포지션 Closed
-포지션 : ${positionAmt > 0 ? '롱' : '숏'},
-현재가 : ${markPrice},
-stopLossPrice: ${stopLossPrice},
-takeProfitPrice: ${takeProfitPrice},
-추세 변환: ${checkWave},
-손절, 손익 : ${stopTakeCheck},
-실현손익: ${(unrealizedProfit - fee).toFixed(2)}USDT`);
-
         await closePosition(symbol, positionAmt);
         const curBalance = await sendUSDTBalance();
         const fee = curBalance * 0.001;
@@ -194,6 +185,15 @@ takeProfitPrice: ${takeProfitPrice},
         );
 
         await currentCheck(symbol);
+
+        sendMessage(`손절, 익절 조건 충족되어 포지션 Closed
+          포지션 : ${positionAmt > 0 ? '롱' : '숏'},
+          현재가 : ${markPrice},
+          stopLossPrice: ${stopLossPrice},
+          takeProfitPrice: ${takeProfitPrice},
+          추세 변환: ${checkWave},
+          손절, 손익 : ${stopTakeCheck},
+          실현손익: ${(unrealizedProfit - fee).toFixed(2)}USDT`);
       }
     }
   } catch (error) {
