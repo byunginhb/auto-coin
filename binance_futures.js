@@ -228,7 +228,7 @@ const getBuyCheck = async (
     if (
       candlePlus3Check &&
       candlePlus3WaveCheck &&
-      lows.at(-3) !== stopLossPrice
+      lows.at(-3) > stopLossPrice
     ) {
       sendMessage(
         `롱 포지션 진입 중에 양봉 연속 나와 손절가 수정 ${stopLossPrice} -> ${lows.at(
@@ -346,7 +346,7 @@ const getSellCheck = async (
     if (
       candleMinus3Check &&
       candleMinus3WaveCheck &&
-      highs.at(-3) !== stopLossPrice
+      highs.at(-3) < stopLossPrice
     ) {
       sendMessage(
         `숏 포지션 진입 중에 음봉 연속 나와 손절가 수정 ${stopLossPrice} -> ${highs.at(
@@ -498,7 +498,11 @@ async function trade(symbol, interval = '30m') {
         takeProfitPrice = savedCoinData.takeProfitPrice;
       }
     }
+  } catch (error) {
+    sendMessage(`선물 트레이딩 실패 - 1: ${error.message}`);
+  }
 
+  try {
     const buyCheck = getBuyCheck(
       bb,
       highs,
@@ -524,7 +528,6 @@ async function trade(symbol, interval = '30m') {
       positionAmt,
       currentPrice
     );
-
     try {
       if (positions.length === 0) {
         if (buyCheck) {
@@ -558,7 +561,7 @@ takeProfitPrice : ${takeProfitPrice}
     }
   } catch (error) {
     console.error('Trade execution start failed:', error);
-    sendMessage(`선물 트레이딩 실패: ${error.message}`);
+    sendMessage(`선물 트레이딩 실패 - 2 : ${error.message}`);
   }
 }
 
