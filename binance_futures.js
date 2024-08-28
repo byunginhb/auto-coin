@@ -498,11 +498,7 @@ async function trade(symbol, interval = '30m') {
         takeProfitPrice = savedCoinData.takeProfitPrice;
       }
     }
-  } catch (error) {
-    sendMessage(`선물 트레이딩 실패 - 1: ${error.message}`);
-  }
 
-  try {
     const buyCheck = getBuyCheck(
       bb,
       highs,
@@ -561,7 +557,7 @@ takeProfitPrice : ${takeProfitPrice}
     }
   } catch (error) {
     console.error('Trade execution start failed:', error);
-    sendMessage(`선물 트레이딩 실패 - 2 : ${error.message}`);
+    sendMessage(`선물 트레이딩 실패 : ${JSON.stringify(error)}`);
   }
 }
 
