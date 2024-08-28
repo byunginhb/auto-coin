@@ -499,7 +499,7 @@ async function trade(symbol, interval = '30m') {
       }
     }
 
-    const buyCheck = getBuyCheck(
+    const buyCheck = await getBuyCheck(
       bb,
       highs,
       lows,
@@ -512,7 +512,7 @@ async function trade(symbol, interval = '30m') {
       currentPrice
     );
 
-    const sellCheck = getSellCheck(
+    const sellCheck = await getSellCheck(
       bb,
       highs,
       lows,
@@ -524,9 +524,10 @@ async function trade(symbol, interval = '30m') {
       positionAmt,
       currentPrice
     );
+
     try {
       if (positions.length === 0) {
-        if (buyCheck) {
+        if (buyCheck === true) {
           // 롱 포지션 진입
           await openPosition(symbol, adjustedQuantity, 'LONG', currentPrice);
           sendMessage(`롱포지션 조건 충족!,
@@ -537,7 +538,7 @@ takeProfitPrice : ${takeProfitPrice}
           `);
 
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
-        } else if (sellCheck) {
+        } else if (sellCheck === true) {
           // 숏 포지션 진입
           await openPosition(symbol, adjustedQuantity, 'SHORT', currentPrice);
           sendMessage(`숏포지션 조건 충족!
