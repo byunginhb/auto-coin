@@ -141,6 +141,7 @@ async function backtest(
       if (buySignal && longEntryPrice < highs.at(-1)) {
         calculateStopTakePrice(starts, lows, -3);
         buySignal = false;
+        longEntryPrice = starts.at(-1);
         return true;
       }
 
@@ -240,6 +241,7 @@ async function backtest(
 
       if (sellSignal && shortEntryPrice > lows.at(-1)) {
         calculateStopTakePrice(starts, highs, -3);
+        shortEntryPrice = starts.at(-1);
         sellSignal = false;
         return true;
       }
