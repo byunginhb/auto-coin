@@ -306,7 +306,7 @@ const getBuyCheck = async (
     const candlePlus3rows =
       starts.at(-3) < closes.at(-3) && starts.at(-2) < closes.at(-2);
 
-    if (candleMinus3rows && candlePlus3rows) {
+    if (candleMinus3rows && candlePlus3rows && buySignal === false) {
       longEntryPrice = highs.at(-6);
       buySignal = true;
       sendMessage(`3개 음봉 이후 3개 양봉 나와 롱포지션 진입 신호`);
@@ -424,7 +424,7 @@ const getSellCheck = async (
     const candleMinus3rows =
       starts.at(-3) > closes.at(-3) && starts.at(-2) > closes.at(-2);
 
-    if (candlePlus3rows && candleMinus3rows) {
+    if (candlePlus3rows && candleMinus3rows && sellSignal === false) {
       shortEntryPrice = lows.at(-6);
       sellSignal = true;
 
