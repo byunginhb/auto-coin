@@ -483,10 +483,6 @@ async function trade(symbol, interval = '30m') {
     const { bb, closes, starts, highs, lows, sma10, sma50, sma100 } =
       await calculateIndicators(candleSlice, 20, 2);
 
-    if (lastCandleHigh !== null && lastCandleHigh === highs.at(-2)) {
-      return;
-    }
-
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
 
