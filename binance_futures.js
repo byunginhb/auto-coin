@@ -41,8 +41,6 @@ let shortEntryPrice = null;
 
 let isInitDB = false;
 
-let lastCandleHigh = null;
-
 // 텔레그램 봇 설정
 function setTelegramBot(bot) {
   telegramBot = bot;
@@ -483,10 +481,6 @@ async function trade(symbol, interval = '30m') {
     const { bb, closes, starts, highs, lows, sma10, sma50, sma100 } =
       await calculateIndicators(candleSlice, 20, 2);
 
-    if (lastCandleHigh !== null && lastCandleHigh === highs.at(-2)) {
-      return;
-    }
-
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
     const currentPrice = await getCurrentPrice(symbol, binance);
 
@@ -566,8 +560,6 @@ takeProfitPrice : ${takeProfitPrice}
     console.error('Trade execution start failed:', error);
     sendMessage(`선물 트레이딩 실패 : ${JSON.stringify(error)}`);
   }
-
-  lastCandleHigh = highs.at(-2);
 }
 
 // 트레이딩 시작
