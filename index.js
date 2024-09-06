@@ -17,13 +17,8 @@ const cron = require('node-cron');
 const { coinDB } = require('./db');
 
 // back test
-// const future_backtest = require('./future_backtest').backtest;
-// const spot_backtest = require('./spot_backtest').backtest;
-// const martin_bb_backtest = require('./martin_bb_backtest').backtest;
-// const future_backtest_ma_bol = require('./future_backtest_ma_bol').backtest;
-// const future_backtest_bb_stochrsi =
-//   require('./future_backtest_bb_stochrsi').backtest;
-const future_backtest_bb_rsi = require('./future_backtest_bb_rsi').backtest;
+// require('./future_backtest_bb_rsi').backtest;
+require('./future_backtest_bb_ema').backtest;
 
 cron.schedule('5 0 * * *', async () => {
   try {

@@ -2,6 +2,7 @@ const {
   BollingerBands,
   RSI,
   SMA,
+  EMA,
   StochasticRSI,
 } = require('technicalindicators');
 const axios = require('axios');
@@ -48,9 +49,14 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       stdDev: bbStd,
       values: closes,
     });
-    const sma10 = SMA.calculate({ period: 10, values: closes });
-    const sma50 = SMA.calculate({ period: 50, values: closes });
-    const sma100 = SMA.calculate({ period: 100, values: closes });
+    // const sma10 = SMA.calculate({ period: 10, values: closes });
+    // const sma50 = SMA.calculate({ period: 50, values: closes });
+    // const sma100 = SMA.calculate({ period: 100, values: closes });
+
+    const sma10 = EMA.calculate({ period: 10, values: closes });
+    const sma50 = EMA.calculate({ period: 50, values: closes });
+    const sma100 = EMA.calculate({ period: 100, values: closes });
+
     const StochasticRSIs = StochasticRSI.calculate({
       values: closes,
       rsiPeriod: 14,
