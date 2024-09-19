@@ -49,13 +49,13 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       stdDev: bbStd,
       values: closes,
     });
-    // const sma10 = SMA.calculate({ period: 10, values: closes });
-    // const sma50 = SMA.calculate({ period: 50, values: closes });
-    // const sma100 = SMA.calculate({ period: 100, values: closes });
+    // const ema10 = SMA.calculate({ period: 10, values: closes });
+    // const ema50 = SMA.calculate({ period: 50, values: closes });
+    // const ema100 = SMA.calculate({ period: 100, values: closes });
 
-    const sma10 = EMA.calculate({ period: 10, values: closes });
-    const sma50 = EMA.calculate({ period: 50, values: closes });
-    const sma100 = EMA.calculate({ period: 100, values: closes });
+    const ema10 = EMA.calculate({ period: 10, values: closes });
+    const ema50 = EMA.calculate({ period: 50, values: closes });
+    const ema100 = EMA.calculate({ period: 100, values: closes });
 
     const StochasticRSIs = StochasticRSI.calculate({
       values: closes,
@@ -71,9 +71,9 @@ const calculateIndicators = (candles, bbPeriod = 20, bbStd = 2) => {
       starts,
       highs,
       lows,
-      sma10,
-      sma50,
-      sma100,
+      ema10,
+      ema50,
+      ema100,
     };
   } catch (error) {
     console.error('Failed to calculate indicators:', error);
