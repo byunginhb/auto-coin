@@ -91,9 +91,9 @@ const sendUSDTBalance = async () => {
 async function openPosition(symbol, quantity, type, entryPrice) {
   try {
     if (type === 'LONG') {
-      await binance.futuresMarketBuy(symbol, quantity);
+      await binance.futureemarketBuy(symbol, quantity);
     } else if (type === 'SHORT') {
-      await binance.futuresMarketSell(symbol, quantity);
+      await binance.futureemarketSell(symbol, quantity);
     }
   } catch (error) {
     sendMessage(
@@ -109,10 +109,10 @@ async function closePosition(symbol, positionAmt) {
   try {
     if (positionAmt > 0) {
       //LONG 포지션 청산
-      await binance.futuresMarketSell(symbol, Math.abs(positionAmt));
+      await binance.futureemarketSell(symbol, Math.abs(positionAmt));
     } else {
       //SHORT 포지션 청산
-      await binance.futuresMarketBuy(symbol, Math.abs(positionAmt));
+      await binance.futureemarketBuy(symbol, Math.abs(positionAmt));
     }
   } catch (error) {
     sendMessage(`포지션 청산 실패: ${error.message}`);
@@ -135,7 +135,7 @@ const checkBB = (positionAmt, lastBB, curHigh, curLow) => {
 };
 
 // 포지션 모니터링 손절,익절 체크
-async function checkStopLoss(marketPrice, sma10, sma50, sma100) {
+async function checkStopLoss(marketPrice, ema10, ema50, ema100) {
   try {
     const { positions } = await getFutureAccountInfo(binance);
 
@@ -159,9 +159,9 @@ async function checkStopLoss(marketPrice, sma10, sma50, sma100) {
           Number(markPrice) >= Number(takeProfitPrice);
 
         checkWave =
-          sma10.at(-1) > sma50.at(-1) &&
-          sma10.at(-1) > sma100.at(-1) &&
-          sma50.at(-1) > sma100.at(-1);
+          ema10.at(-1) > ema50.at(-1) &&
+          ema10.at(-1) > ema100.at(-1) &&
+          ema50.at(-1) > ema100.at(-1);
       } else if (positionAmt < 0) {
         //숏 포지션
         stopTakeCheck =
@@ -169,9 +169,9 @@ async function checkStopLoss(marketPrice, sma10, sma50, sma100) {
           Number(markPrice) <= Number(takeProfitPrice);
 
         checkWave =
-          sma10.at(-1) < sma50.at(-1) &&
-          sma10.at(-1) < sma100.at(-1) &&
-          sma50.at(-1) < sma100.at(-1);
+          ema10.at(-1) < ema50.at(-1) &&
+          ema10.at(-1) < ema100.at(-1) &&
+          ema50.at(-1) < ema100.at(-1);
       }
       closeCheck = stopTakeCheck || !checkWave;
 
@@ -208,9 +208,9 @@ const getBuyCheck = async (
   lows,
   starts,
   closes,
-  sma10,
-  sma50,
-  sma100,
+  ema10,
+  ema50,
+  ema100,
   positionAmt,
   currentPrice
 ) => {
@@ -255,12 +255,9 @@ const getBuyCheck = async (
 
   //정배열 확인
   const plusWave =
-    sma10.at(-6) > sma50.at(-6) &&
-    sma10.at(-6) > sma100.at(-6) &&
-    sma50.at(-6) > sma100.at(-6) &&
-    sma10.at(-1) > sma50.at(-1) &&
-    sma10.at(-1) > sma100.at(-1) &&
-    sma50.at(-1) > sma100.at(-1);
+    ema10.at(-1) > ema50.at(-1) &&
+    ema10.at(-1) > ema100.at(-1) &&
+    ema50.at(-1) > ema100.at(-1);
 
   //다섯개 연속 양봉이면 진입
   const candlePlus5rows =
@@ -307,7 +304,8 @@ const getBuyCheck = async (
     if (candleMinus3rows && candlePlus3rows && buySignal === false) {
       longEntryPrice = highs.at(-6);
       buySignal = true;
-      sendMessage(`3개 음봉 이후 3개 양봉 나와 롱포지션 진입 신호`);
+      sendMessage(`3개 음봉 이후 3개 양봉 나와 롱포지션 진입 신호
+        목표 진입가 : ${longEntryPrice}`);
 
       return false;
     }
@@ -326,9 +324,9 @@ const getSellCheck = async (
   lows,
   starts,
   closes,
-  sma10,
-  sma50,
-  sma100,
+  ema10,
+  ema50,
+  ema100,
   positionAmt,
   currentPrice
 ) => {
@@ -372,12 +370,9 @@ const getSellCheck = async (
   };
 
   const minusWave =
-    sma10.at(-6) < sma50.at(-6) &&
-    sma10.at(-6) < sma100.at(-6) &&
-    sma50.at(-6) < sma100.at(-6) &&
-    sma10.at(-1) < sma50.at(-1) &&
-    sma10.at(-1) < sma100.at(-1) &&
-    sma50.at(-1) < sma100.at(-1);
+    ema10.at(-1) < ema50.at(-1) &&
+    ema10.at(-1) < ema100.at(-1) &&
+    ema50.at(-1) < ema100.at(-1);
 
   //다섯개 연속 음봉이면 진입
   const candleMinus5rows =
@@ -426,7 +421,8 @@ const getSellCheck = async (
       shortEntryPrice = lows.at(-6);
       sellSignal = true;
 
-      sendMessage(`3개 양봉 이후 3개 음봉 나와 숏포지션 진입 신호`);
+      sendMessage(`3개 양봉 이후 3개 음봉 나와 숏포지션 진입 신호
+        목표 진입가 : ${shortEntryPrice}`);
 
       return false;
     }
@@ -445,7 +441,7 @@ const currentCheck = async (symbol = 'BTCUSDT', interval = '15m') => {
     interval,
     120
   );
-  const { closes, starts, highs, lows, sma10, sma50, sma100 } =
+  const { closes, starts, highs, lows, ema10, ema50, ema100 } =
     await calculateIndicators(candleSlice, 20, 2);
 
   sendMessage(`현재 상태
@@ -453,9 +449,9 @@ starts: ${starts.at(-1)},
 closes: ${closes.at(-1)},
 highs: ${highs.at(-1)},
 lows: ${lows.at(-1)},
-sma10: ${sma10.at(-1)},
-sma50: ${sma50.at(-1)},
-sma100: ${sma100.at(-1)}
+ema10: ${ema10.at(-1)},
+ema50: ${ema50.at(-1)},
+ema100: ${ema100.at(-1)}
 `);
 };
 
@@ -478,7 +474,7 @@ async function trade(symbol, interval = '30m') {
       interval,
       120
     );
-    const { bb, closes, starts, highs, lows, sma10, sma50, sma100 } =
+    const { bb, closes, starts, highs, lows, ema10, ema50, ema100 } =
       await calculateIndicators(candleSlice, 20, 2);
 
     const { positions, usdtBalance } = await getFutureAccountInfo(binance);
@@ -505,9 +501,9 @@ async function trade(symbol, interval = '30m') {
       lows,
       starts,
       closes,
-      sma10,
-      sma50,
-      sma100,
+      ema10,
+      ema50,
+      ema100,
       positionAmt,
       currentPrice
     );
@@ -518,9 +514,9 @@ async function trade(symbol, interval = '30m') {
       lows,
       starts,
       closes,
-      sma10,
-      sma50,
-      sma100,
+      ema10,
+      ema50,
+      ema100,
       positionAmt,
       currentPrice
     );
@@ -551,7 +547,7 @@ takeProfitPrice : ${takeProfitPrice}
           await coinDB.upsertCoinData(stopLossPrice, takeProfitPrice);
         }
       } else {
-        await checkStopLoss(currentPrice, sma10, sma50, sma100);
+        await checkStopLoss(currentPrice, ema10, ema50, ema100);
       }
     } catch (error) {
       sendMessage(`포지션 진입시 에러 발생: ${error.message}`);
