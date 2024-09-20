@@ -4,7 +4,6 @@ const { calculateIndicators } = require('./binance_common').binance_common;
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const fs = require('fs');
 const path = require('path');
-const { sma } = require('technicalindicators');
 
 const logMode = false;
 
@@ -71,9 +70,9 @@ async function backtest(
       lows,
       starts,
       closes,
-      sma10,
-      sma50,
-      sma100
+      ema10,
+      ema50,
+      ema100
     ) => {
       if (position === 'LONG') {
         //다섯개 연속 양봉이면 진입
@@ -95,25 +94,22 @@ async function backtest(
         return false;
       }
 
-      const calculateStopTakePrice = (starts, lows, lossPosition) => {
-        const minimumStopLoss = starts.at(-1) * 0.995;
-        const maximumStopLoss = starts.at(-1) * 0.98;
+      const calculateStopTakePrice = (currentPrice, lows, lossPosition) => {
+        const minimumStopLoss = currentPrice * 0.995;
+        const maximumStopLoss = currentPrice * 0.98;
 
         stopLossPrice = Math.max(
           Math.min(lows.at(lossPosition), minimumStopLoss),
           maximumStopLoss
         );
-        takeProfitPrice = starts.at(-1) + (starts.at(-1) - stopLossPrice) * 1.5;
+        takeProfitPrice = currentPrice + (currentPrice - stopLossPrice) * 1.5;
       };
 
       //정배열 확인
       const plusWave =
-        sma10.at(-6) > sma50.at(-6) &&
-        sma10.at(-6) > sma100.at(-6) &&
-        sma50.at(-6) > sma100.at(-6) &&
-        sma10.at(-1) > sma50.at(-1) &&
-        sma10.at(-1) > sma100.at(-1) &&
-        sma50.at(-1) > sma100.at(-1);
+        ema10.at(-1) > ema50.at(-1) &&
+        ema10.at(-1) > ema100.at(-1) &&
+        ema50.at(-1) > ema100.at(-1);
 
       //다섯개 연속 양봉이면 진입
       const candlePlus5rows =
@@ -132,16 +128,19 @@ async function backtest(
         highs.at(-2) > highs.at(-3);
 
       if (plusWave && candlePlus5rows && candlePlus5Wave) {
-        calculateStopTakePrice(starts, lows, -2);
         longEntryPrice = starts.at(-1);
+        calculateStopTakePrice(longEntryPrice, lows, -2);
         buySignal = false;
         return true;
       }
 
       if (buySignal && longEntryPrice < highs.at(-1)) {
-        calculateStopTakePrice(starts, lows, -3);
+        if (longEntryPrice < starts.at(-1)) {
+          longEntryPrice = starts.at(-1);
+        }
+        calculateStopTakePrice(longEntryPrice, lows, -3);
         buySignal = false;
-        longEntryPrice = starts.at(-1);
+
         return true;
       }
 
@@ -173,9 +172,9 @@ async function backtest(
       lows,
       starts,
       closes,
-      sma10,
-      sma50,
-      sma100
+      ema10,
+      ema50,
+      ema100
     ) => {
       if (position === 'SHORT') {
         //다섯개 연속 음봉이면 진입
@@ -197,24 +196,21 @@ async function backtest(
         return false;
       }
 
-      const calculateStopTakePrice = (starts, highs, lossPosition) => {
-        const minimumStopLoss = starts.at(-1) * 1.005;
-        const maximumStopLoss = starts.at(-1) * 1.02;
+      const calculateStopTakePrice = (currentPrice, highs, lossPosition) => {
+        const minimumStopLoss = currentPrice * 1.005;
+        const maximumStopLoss = currentPrice * 1.02;
 
         stopLossPrice = Math.min(
           Math.max(highs.at(lossPosition), minimumStopLoss),
           maximumStopLoss
         );
-        takeProfitPrice = starts.at(-1) - (stopLossPrice - starts.at(-1)) * 1.5;
+        takeProfitPrice = currentPrice - (stopLossPrice - currentPrice) * 1.5;
       };
 
       const minusWave =
-        sma10.at(-6) < sma50.at(-6) &&
-        sma10.at(-6) < sma100.at(-6) &&
-        sma50.at(-6) < sma100.at(-6) &&
-        sma10.at(-1) < sma50.at(-1) &&
-        sma10.at(-1) < sma100.at(-1) &&
-        sma50.at(-1) < sma100.at(-1);
+        ema10.at(-1) < ema50.at(-1) &&
+        ema10.at(-1) < ema100.at(-1) &&
+        ema50.at(-1) < ema100.at(-1);
 
       //다섯개 연속 음봉이면 진입
       const candleMinus5rows =
@@ -233,15 +229,17 @@ async function backtest(
         lows.at(-2) < lows.at(-3);
 
       if (minusWave && candleMinus5rows && candleMinus5Wave) {
-        calculateStopTakePrice(starts, highs, -2);
         shortEntryPrice = starts.at(-1);
+        calculateStopTakePrice(shortEntryPrice, highs, -2);
         sellSignal = false;
         return true;
       }
 
       if (sellSignal && shortEntryPrice > lows.at(-1)) {
-        calculateStopTakePrice(starts, highs, -3);
-        shortEntryPrice = starts.at(-1);
+        if (shortEntryPrice > starts.at(-1)) {
+          shortEntryPrice = starts.at(-1);
+        }
+        calculateStopTakePrice(shortEntryPrice, highs, -3);
         sellSignal = false;
         return true;
       }
@@ -269,26 +267,40 @@ async function backtest(
     };
 
     // 포지션 모니터링 손절,익절 체크
-    function checkStopLoss(closedDate, marketPrice, sma10, sma50, sma100) {
+    function checkStopLoss(
+      closedDate,
+      lowPrice,
+      highPrice,
+      ema10,
+      ema50,
+      ema100
+    ) {
       try {
         // 손절, 익절 구간 체크
         let closeCheck = false;
         let stopTakeCheck = false;
         let checkWave = false;
+        let closePrice = null;
 
         if (position === 'LONG') {
-          const profit =
-            (marketPrice - entryPrice) * (currentBalance / entryPrice);
-          const profitPercent = (profit / currentBalance) * 100;
+          let stopLoss = Number(lowPrice) <= Number(stopLossPrice);
+          let takeProfit = Number(highPrice) >= Number(takeProfitPrice);
 
-          stopTakeCheck =
-            Number(marketPrice) <= Number(stopLossPrice) ||
-            Number(marketPrice) >= Number(takeProfitPrice);
+          let profit = null;
+          let profitPercent = null;
+
+          stopTakeCheck = stopLoss || takeProfit;
+
+          if (stopTakeCheck) {
+            closePrice = stopLoss ? stopLossPrice : takeProfitPrice;
+            profit = (closePrice - entryPrice) * (currentBalance / entryPrice);
+            profitPercent = (profit / currentBalance) * 100;
+          }
 
           checkWave =
-            sma10.at(-1) > sma50.at(-1) &&
-            sma10.at(-1) > sma100.at(-1) &&
-            sma50.at(-1) > sma100.at(-1);
+            ema10.at(-1) > ema50.at(-1) &&
+            ema10.at(-1) > ema100.at(-1) &&
+            ema50.at(-1) > ema100.at(-1);
 
           closeCheck = stopTakeCheck || !checkWave;
 
@@ -301,7 +313,7 @@ async function backtest(
             results.push({
               date: closedDate,
               action: 'SELL LONG position closed-2',
-              price: marketPrice,
+              price: closePrice,
               profit: profit,
               profitPercent: profitPercent,
               fee,
@@ -319,18 +331,24 @@ async function backtest(
             if (profit > 0) profitTradeCount++;
           }
         } else if (position === 'SHORT') {
-          const profit =
-            (entryPrice - marketPrice) * (currentBalance / entryPrice);
-          const profitPercent = (profit / currentBalance) * 100;
+          let stopLoss = Number(highPrice) >= Number(stopLossPrice);
+          let takeProfit = Number(lowPrice) <= Number(takeProfitPrice);
 
-          stopTakeCheck =
-            Number(marketPrice) >= Number(stopLossPrice) ||
-            Number(marketPrice) <= Number(takeProfitPrice);
+          let profit = null;
+          let profitPercent = null;
+
+          stopTakeCheck = stopLoss || takeProfit;
+
+          if (stopTakeCheck) {
+            closePrice = stopLoss ? stopLossPrice : takeProfitPrice;
+            profit = (entryPrice - closePrice) * (currentBalance / entryPrice);
+            profitPercent = (profit / currentBalance) * 100;
+          }
 
           checkWave =
-            sma10.at(-1) < sma50.at(-1) &&
-            sma10.at(-1) < sma100.at(-1) &&
-            sma50.at(-1) < sma100.at(-1);
+            ema10.at(-1) < ema50.at(-1) &&
+            ema10.at(-1) < ema100.at(-1) &&
+            ema50.at(-1) < ema100.at(-1);
 
           closeCheck = stopTakeCheck || !checkWave;
 
@@ -343,7 +361,7 @@ async function backtest(
             results.push({
               date: closedDate,
               action: 'BUY SHORT position closed-2',
-              price: marketPrice,
+              price: closePrice,
               profit: profit,
               profitPercent: profitPercent,
               fee,
@@ -381,7 +399,7 @@ async function backtest(
 
       const candleSlice = candles.slice(i - 320, i);
       const indicators = calculateIndicators(candleSlice, 20, 2);
-      const { bb, closes, starts, highs, lows, sma10, sma50, sma100 } =
+      const { bb, closes, starts, highs, lows, ema10, ema50, ema100 } =
         indicators;
 
       const buyCheck = getBuyCheck(
@@ -390,9 +408,9 @@ async function backtest(
         lows,
         starts,
         closes,
-        sma10,
-        sma50,
-        sma100
+        ema10,
+        ema50,
+        ema100
       );
 
       const sellCheck = getSellCheck(
@@ -401,9 +419,9 @@ async function backtest(
         lows,
         starts,
         closes,
-        sma10,
-        sma50,
-        sma100
+        ema10,
+        ema50,
+        ema100
       );
 
       if (logMode) {
@@ -458,10 +476,11 @@ async function backtest(
         //손절, 익절 체크
         checkStopLoss(
           convertToKoreanTimeZone(new Date(candles[i - 1][0])),
-          starts.at(-1),
-          sma10,
-          sma50,
-          sma100
+          lows.at(-1),
+          highs.at(-1),
+          ema10,
+          ema50,
+          ema100
         );
       }
     }
@@ -561,84 +580,8 @@ async function onceBacktest() {
   console.log(finalBalance);
 }
 
-async function optimizeParameters() {
-  const results = [];
-  const symbol = 'BTCUSDT';
-  const interval = '15m';
-  const start = '2021-01-01';
-  const end = '2024-07-25';
-
-  // 범위와 간격 설정
-  const stopLossRange = { min: 1, max: 3, step: 0.2 };
-  const takeProfitRange = { min: 1.5, max: 4.5, step: 0.2 };
-
-  let bestResult = {
-    stopLossPercent: null,
-    finalBalance: 0,
-  };
-
-  // 범위 내에서 일정한 간격으로 값 생성
-  const generateRange = (range) => {
-    const values = [];
-    for (let value = range.min; value <= range.max; value += range.step) {
-      values.push(value);
-    }
-    return values;
-  };
-
-  const stopLossOptions = generateRange(stopLossRange);
-  const takeProfitOptions = generateRange(takeProfitRange);
-
-  for (let stopLoss of stopLossOptions) {
-    for (let takeProfit of takeProfitOptions) {
-      const finalBalance = await backtest(
-        symbol,
-        interval,
-        start,
-        end,
-        stopLoss,
-        takeProfit
-      );
-
-      console.log(
-        `Testing with stopLoss: ${stopLoss}%, takeProfit: ${takeProfit}, finalBalance: ${finalBalance}`
-      );
-
-      results.push({
-        stopLossPercent: stopLoss,
-        takeProfitPercent: takeProfit,
-        finalBalance: finalBalance,
-      });
-
-      if (finalBalance > bestResult.finalBalance) {
-        bestResult = {
-          stopLossPercent: stopLoss,
-          takeProfitPercent: takeProfit,
-          finalBalance: finalBalance,
-        };
-      }
-    }
-  }
-
-  const csvWriter = createCsvWriter({
-    path: `future_backtest_optimizeParameters_${Date.now().toString()}.csv`,
-    header: [
-      { id: 'stopLossPercent', title: 'STOP_LOSS' },
-      { id: 'takeProfitPercent', title: 'TAKE_PROFIT' },
-      { id: 'finalBalance', title: 'FINAL_BALANCE' },
-    ],
-  });
-
-  csvWriter.writeRecords(results).then(() => {
-    console.log('Backtest results saved to backtest_results.csv');
-  });
-
-  console.log('Best parameters found:', bestResult);
-}
-
 // 백테스트 실행
-// optimizeParameters();
-// onceBacktest();
+onceBacktest();
 
 exports.backtest = {
   backtest,
