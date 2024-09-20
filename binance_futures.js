@@ -91,9 +91,9 @@ const sendUSDTBalance = async () => {
 async function openPosition(symbol, quantity, type, entryPrice) {
   try {
     if (type === 'LONG') {
-      await binance.futureemarketBuy(symbol, quantity);
+      await binance.futuresMarketBuy(symbol, quantity);
     } else if (type === 'SHORT') {
-      await binance.futureemarketSell(symbol, quantity);
+      await binance.futuresMarketSell(symbol, quantity);
     }
   } catch (error) {
     sendMessage(
@@ -109,10 +109,10 @@ async function closePosition(symbol, positionAmt) {
   try {
     if (positionAmt > 0) {
       //LONG 포지션 청산
-      await binance.futureemarketSell(symbol, Math.abs(positionAmt));
+      await binance.futuresMarketSell(symbol, Math.abs(positionAmt));
     } else {
       //SHORT 포지션 청산
-      await binance.futureemarketBuy(symbol, Math.abs(positionAmt));
+      await binance.futuresMarketBuy(symbol, Math.abs(positionAmt));
     }
   } catch (error) {
     sendMessage(`포지션 청산 실패: ${error.message}`);
